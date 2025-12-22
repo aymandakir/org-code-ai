@@ -43,7 +43,7 @@ router.get('/repositories/:owner/:repo/analysis', async (req, res) => {
     }
 
     // Calculate repository-specific metrics
-    const affectedFiles = new Set(repository.vulnerabilities.map((v) => v.filePath)).size;
+    const affectedFiles = new Set(repository.vulnerabilities.map((v: { filePath: string }) => v.filePath)).size;
 
     // Language breakdown
     const languageStats = await prisma.vulnerability.groupBy({
@@ -54,7 +54,7 @@ router.get('/repositories/:owner/:repo/analysis', async (req, res) => {
       _count: true,
     });
 
-    const languageBreakdown = languageStats.map((stat) => ({
+    const languageBreakdown = languageStats.map((stat: { language: string | null; _count: number }) => ({
       language: stat.language || 'Unknown',
       count: stat._count,
     }));
@@ -78,7 +78,7 @@ router.get('/repositories/:owner/:repo/analysis', async (req, res) => {
           affectedFiles,
           securityScore: repository.securityScores[0]?.score || 0,
           lastScanAt: repository.scans[0]?.startedAt || null,
-          openPRs: repository.pullRequestFixes.filter((pr) => pr.status === 'open').length,
+          openPRs: repository.pullRequestFixes.filter((pr: { status: string }) => pr.status === 'open').length,
           languageBreakdown,
         },
         vulnerabilities: repository.vulnerabilities,
