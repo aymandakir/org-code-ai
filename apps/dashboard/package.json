@@ -19,7 +19,7 @@
     "react-dom": "19.2.3",
     "tailwind-merge": "^3.4.0",
     "date-fns": "^3.0.0",
-    "@org-code-ai/types": "*"
+    "@org-code-ai/types": "file:../../packages/types"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
