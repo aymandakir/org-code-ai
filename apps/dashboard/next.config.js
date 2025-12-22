@@ -5,6 +5,7 @@ const nextConfig = {
   reactCompiler: true,
   transpilePackages: ['@org-code-ai/types'],
   output: 'standalone',
+  // Use webpack instead of Turbopack for better module resolution
   webpack: (config, { isServer }) => {
     // Add root node_modules to resolve paths for hoisted dependencies
     config.resolve.modules = [
@@ -13,6 +14,10 @@ const nextConfig = {
       'node_modules',
     ];
     return config;
+  },
+  // Disable Turbopack to use webpack
+  experimental: {
+    turbo: undefined,
   },
 };
 
