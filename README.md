@@ -120,3 +120,4 @@ See `.env.example` for all available variables.
 
 MIT
 
+# CI Fix
