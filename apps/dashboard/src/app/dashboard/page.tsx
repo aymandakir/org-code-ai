@@ -18,6 +18,8 @@ import { Shield, AlertTriangle, TrendingUp, TrendingDown, Clock, DollarSign, Tar
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { VelocityChart } from '@/components/charts/velocity-chart';
+import { MTTFChart } from '@/components/charts/mttf-chart';
 
 // TODO: Get orgId from auth/session - for now using hardcoded demo org
 const DEMO_ORG_ID = 'stephdl'; // This should come from user session
@@ -299,7 +301,7 @@ export default function DashboardPage() {
         </Card>
       </div>
 
-      {/* Security Velocity Chart Placeholder */}
+      {/* Security Velocity Chart */}
       {metrics?.velocity && (
         <Card className="bg-gray-900 border-gray-800">
           <CardHeader>
@@ -311,13 +313,20 @@ export default function DashboardPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="h-64 flex items-center justify-center text-gray-500">
-              Chart visualization coming soon
-              <br />
-              <span className="text-xs">
-                {metrics.velocity.timeline.length} data points available
-              </span>
-            </div>
+            <VelocityChart data={metrics.velocity.timeline} />
+          </CardContent>
+        </Card>
+      )}
+
+      {/* MTTF Chart */}
+      {metrics?.mttf && (
+        <Card className="bg-gray-900 border-gray-800">
+          <CardHeader>
+            <CardTitle className="text-white">Mean Time To Fix by Severity</CardTitle>
+            <CardDescription className="text-gray-400">Average hours to resolve vulnerabilities</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <MTTFChart data={metrics.mttf.bySeverity} />
           </CardContent>
         </Card>
       )}
