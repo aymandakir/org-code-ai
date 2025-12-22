@@ -38,46 +38,84 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Fetch demo repositories
+    // Mock repositories for demo (always use these for homepage)
+    const mockRepos: Repo[] = [
+      {
+        id: '1',
+        name: 'api-gateway',
+        url: 'https://github.com/stephdl/api-gateway',
+        description: 'Microservices API Gateway',
+        language: 'TypeScript',
+        stars: 128,
+        forks: 23,
+        updatedAt: new Date().toISOString(),
+      },
+      {
+        id: '2',
+        name: 'auth-service',
+        url: 'https://github.com/stephdl/auth-service',
+        description: 'Authentication and authorization service',
+        language: 'Go',
+        stars: 89,
+        forks: 15,
+        updatedAt: new Date().toISOString(),
+      },
+      {
+        id: '3',
+        name: 'frontend-app',
+        url: 'https://github.com/stephdl/frontend-app',
+        description: 'React frontend application',
+        language: 'TypeScript',
+        stars: 156,
+        forks: 34,
+        updatedAt: new Date().toISOString(),
+      },
+      {
+        id: '4',
+        name: 'ns8-lamp',
+        url: 'https://github.com/stephdl/ns8-lamp',
+        description: 'LAMP stack configuration for NS8',
+        language: 'PHP',
+        stars: 42,
+        forks: 8,
+        updatedAt: new Date().toISOString(),
+      },
+      {
+        id: '5',
+        name: 'database-migrations',
+        url: 'https://github.com/stephdl/database-migrations',
+        description: 'Database schema migrations',
+        language: 'SQL',
+        stars: 34,
+        forks: 12,
+        updatedAt: new Date().toISOString(),
+      },
+      {
+        id: '6',
+        name: 'monitoring-dashboard',
+        url: 'https://github.com/stephdl/monitoring-dashboard',
+        description: 'Application monitoring and metrics',
+        language: 'JavaScript',
+        stars: 91,
+        forks: 18,
+        updatedAt: new Date().toISOString(),
+      },
+    ];
+
+    // Try to fetch real data, but use mock data as fallback
     fetchOrgRepos('stephdl')
-      .then(({ repos }) => {
-        setRepositories(repos.slice(0, 10)); // Limit for horizontal scroll
+      .then(({ repos, demoMode }) => {
+        if (repos.length > 0) {
+          setRepositories(repos.slice(0, 10)); // Limit for horizontal scroll
+        } else {
+          // Use mock data if API returns empty or demo mode
+          setRepositories(mockRepos);
+        }
         setLoading(false);
       })
       .catch(() => {
-        // Fallback mock data
-        setRepositories([
-          {
-            id: '1',
-            name: 'api-gateway',
-            url: 'https://github.com/stephdl/api-gateway',
-            description: 'Microservices API Gateway',
-            language: 'TypeScript',
-            stars: 128,
-            forks: 23,
-            updatedAt: new Date().toISOString(),
-          },
-          {
-            id: '2',
-            name: 'auth-service',
-            url: 'https://github.com/stephdl/auth-service',
-            description: 'Authentication and authorization service',
-            language: 'Go',
-            stars: 89,
-            forks: 15,
-            updatedAt: new Date().toISOString(),
-          },
-          {
-            id: '3',
-            name: 'frontend-app',
-            url: 'https://github.com/stephdl/frontend-app',
-            description: 'React frontend application',
-            language: 'TypeScript',
-            stars: 156,
-            forks: 34,
-            updatedAt: new Date().toISOString(),
-          },
-        ]);
+        // Always fallback to mock data on error
+        setRepositories(mockRepos);
         setLoading(false);
       });
   }, []);

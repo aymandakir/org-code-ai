@@ -25,16 +25,37 @@ async function fetchApi<T>(
 
     return await response.json();
   } catch (error: unknown) {
-    console.error('API request error:', error);
+    // Network errors or API unavailable - return demo mode response silently
+    if (
+      error instanceof TypeError &&
+      (error.message.includes('fetch') || error.message.includes('Failed to fetch'))
+    ) {
+      // Silently return demo mode - don't log network errors
+      return {
+        success: false,
+        error: 'API server unavailable',
+        demoMode: true,
+      } as ApiResponse<T> & { demoMode: boolean };
+    }
+    // Re-throw other errors
     throw error instanceof Error ? error : new Error('API request failed');
   }
 }
 
 export async function fetchOrgRepos(orgName: string): Promise<{ repos: Repo[]; demoMode: boolean }> {
   const response = await fetchApi<Repo[]>(`/api/orgs/${orgName}/repos`);
+  
+  // If API is unavailable, return demo mode with empty repos
   if (!response.success || !response.data) {
+    if (response.demoMode) {
+      return {
+        repos: [],
+        demoMode: true,
+      };
+    }
     throw new Error(response.error || 'Failed to fetch repositories');
   }
+  
   return {
     repos: response.data,
     demoMode: response.demoMode || false,
