@@ -2,7 +2,6 @@
 const nextConfig = {
   // Disable React Compiler to avoid babel-plugin-react-compiler dependency issue
   // reactCompiler: true,
-  output: 'standalone',
 };
 
 module.exports = nextConfig;
