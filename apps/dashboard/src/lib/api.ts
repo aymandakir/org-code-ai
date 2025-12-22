@@ -1,4 +1,4 @@
-import type { Repo, RepoFile, ApiResponse } from '@org-code-ai/types';
+import type { Repo, RepoFile, ApiResponse, Finding } from '@org-code-ai/types';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
@@ -59,5 +59,40 @@ export async function fetchRepoScan(
 export function getGitHubAuthUrl(redirectUrl?: string): string {
   const state = redirectUrl ? encodeURIComponent(redirectUrl) : 'default';
   return `${API_BASE_URL}/api/auth/github?state=${state}`;
+}
+
+export async function fetchRepoAnalysis(
+  owner: string,
+  repo: string
+): Promise<{ findings: Finding[]; scanned: number; totalFiles: number }> {
+  const response = await fetchApi<{
+    findings: Finding[];
+    scanned: number;
+    totalFiles: number;
+  }>(`/api/repos/${owner}/${repo}/analyze`, {
+    method: 'POST',
+  });
+  if (!response.success || !response.data) {
+    throw new Error(response.error || 'Failed to analyze repository');
+  }
+  return response.data;
+}
+
+export async function createFixPR(
+  owner: string,
+  repo: string,
+  findings: Finding[]
+): Promise<{ pr: { html_url?: string; title: string; body: string }; fixes: number }> {
+  const response = await fetchApi<{
+    pr: { html_url?: string; title: string; body: string };
+    fixes: number;
+  }>(`/api/repos/${owner}/${repo}/create-fix-pr`, {
+    method: 'POST',
+    body: JSON.stringify({ findings }),
+  });
+  if (!response.success || !response.data) {
+    throw new Error(response.error || 'Failed to create PR');
+  }
+  return response.data;
 }
 

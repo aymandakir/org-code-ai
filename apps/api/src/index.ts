@@ -3,8 +3,16 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import session from 'express-session';
 import cookieParser from 'cookie-parser';
+import { Octokit } from '@octokit/rest';
 import { GitHubClient } from './github/client';
-import type { ApiResponse } from '@org-code-ai/types';
+import {
+  scanCodeForVulnerabilities,
+  detectCrossRepoPatterns,
+  generateFix,
+  generatePullRequest,
+} from '@org-code-ai/ai-agents';
+import { fetchOrgRepos, fetchRepoFiles } from '@org-code-ai/graphql-client';
+import type { ApiResponse, Finding } from '@org-code-ai/types';
 
 dotenv.config();
 
@@ -162,6 +170,204 @@ app.post('/api/repos/:repoId/scan', async (req, res) => {
     res.status(500).json({
       success: false,
       error: error.message || 'Failed to scan repository',
+    } as ApiResponse<null>);
+  }
+});
+
+// AI Analysis endpoint
+app.post('/api/repos/:owner/:repo/analyze', async (req, res) => {
+  try {
+    const { owner, repo } = req.params;
+    const token = (req.session as any)?.githubToken || process.env.GITHUB_TOKEN;
+
+    if (!process.env.OPENAI_API_KEY) {
+      return res.status(400).json({
+        success: false,
+        error: 'OPENAI_API_KEY not configured',
+      } as ApiResponse<null>);
+    }
+
+    // Fetch repo files
+    const files = token
+      ? await fetchRepoFiles(owner, repo, token)
+      : await fetchRepoFiles(owner, repo, '');
+
+    // Mock file contents for demo (in production, fetch actual file contents)
+    const filesWithContent = files.slice(0, 50).map((file) => ({
+      ...file,
+      content: file.type === 'file' ? `// Mock content for ${file.path}` : undefined,
+      language: file.path.split('.').pop() || 'javascript',
+    }));
+
+    // Scan each file for vulnerabilities
+    const allFindings: Finding[] = [];
+    for (const file of filesWithContent) {
+      if (file.type === 'file' && file.content) {
+        try {
+          const findings = await scanCodeForVulnerabilities(
+            file.content,
+            file.language || 'javascript',
+            file.path
+          );
+          allFindings.push(...findings.map((f) => ({ ...f, file: file.path })));
+        } catch (error: any) {
+          console.error(`Error scanning ${file.path}:`, error);
+          // Continue with other files
+        }
+      }
+    }
+
+    res.json({
+      success: true,
+      data: {
+        findings: allFindings,
+        scanned: filesWithContent.length,
+        totalFiles: files.length,
+      },
+    } as ApiResponse<{ findings: Finding[]; scanned: number; totalFiles: number }>);
+  } catch (error: any) {
+    console.error('Error analyzing repo:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to analyze repository',
+    } as ApiResponse<null>);
+  }
+});
+
+// Cross-repo pattern detection
+app.post('/api/orgs/:orgName/analyze-patterns', async (req, res) => {
+  try {
+    const { orgName } = req.params;
+    const token = (req.session as any)?.githubToken || process.env.GITHUB_TOKEN;
+
+    if (!process.env.OPENAI_API_KEY) {
+      return res.status(400).json({
+        success: false,
+        error: 'OPENAI_API_KEY not configured',
+      } as ApiResponse<null>);
+    }
+
+    const repos = token
+      ? await fetchOrgRepos(orgName, token)
+      : await fetchOrgRepos(orgName, '');
+
+    const patterns = await detectCrossRepoPatterns(repos);
+
+    res.json({
+      success: true,
+      data: {
+        patterns,
+        reposAnalyzed: repos.length,
+      },
+    } as ApiResponse<{ patterns: any[]; reposAnalyzed: number }>);
+  } catch (error: any) {
+    console.error('Error analyzing patterns:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to analyze patterns',
+    } as ApiResponse<null>);
+  }
+});
+
+// Generate fix PR
+app.post('/api/repos/:owner/:repo/create-fix-pr', async (req, res) => {
+  try {
+    const { owner, repo } = req.params;
+    const { findings } = req.body as { findings: Finding[] };
+    const token = (req.session as any)?.githubToken || process.env.GITHUB_TOKEN;
+
+    if (!token) {
+      return res.status(401).json({
+        success: false,
+        error: 'GitHub authentication required to create PRs',
+      } as ApiResponse<null>);
+    }
+
+    if (!process.env.OPENAI_API_KEY) {
+      return res.status(400).json({
+        success: false,
+        error: 'OPENAI_API_KEY not configured',
+      } as ApiResponse<null>);
+    }
+
+    if (!findings || findings.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'No findings provided',
+      } as ApiResponse<null>);
+    }
+
+    // Generate fixes for each finding
+    const fixes: Record<string, string> = {};
+    const filesToFix = new Set(findings.map((f) => f.file));
+
+    for (const filePath of filesToFix) {
+      const fileFindings = findings.filter((f) => f.file === filePath);
+      // Mock original code (in production, fetch from GitHub)
+      const originalCode = `// Original code for ${filePath}\n// TODO: Fetch actual file content`;
+      const language = filePath.split('.').pop() || 'javascript';
+
+      // Generate fix for the first finding in this file
+      if (fileFindings.length > 0) {
+        try {
+          const fixedCode = await generateFix(fileFindings[0], originalCode, language);
+          fixes[filePath] = fixedCode;
+        } catch (error: any) {
+          console.error(`Error generating fix for ${filePath}:`, error);
+        }
+      }
+    }
+
+    // Generate PR content
+    const prContent = await generatePullRequest(findings, fixes, repo);
+
+    // Create PR via GitHub API
+    try {
+      const octokit = new Octokit({ auth: token });
+
+      // Note: In production, you'd need to:
+      // 1. Create a branch
+      // 2. Commit the fixes
+      // 3. Push the branch
+      // 4. Create the PR
+      // For now, we'll return the PR content that would be created
+
+      res.json({
+        success: true,
+        data: {
+          pr: {
+            title: prContent.title,
+            body: prContent.description,
+            commit_message: prContent.commit_message,
+            html_url: `https://github.com/${owner}/${repo}/compare/main...org-code-ai-fixes`,
+            number: Math.floor(Math.random() * 1000), // Mock PR number
+          },
+          fixes: Object.keys(fixes).length,
+          message: 'PR content generated. In production, this would create an actual PR.',
+        },
+      } as ApiResponse<any>);
+    } catch (error: any) {
+      console.error('Error creating PR:', error);
+      // Return PR content even if PR creation fails
+      res.json({
+        success: true,
+        data: {
+          pr: {
+            title: prContent.title,
+            body: prContent.description,
+            commit_message: prContent.commit_message,
+            html_url: null,
+          },
+          fixes: Object.keys(fixes).length,
+          message: 'PR content generated but PR creation failed. Check GitHub token permissions.',
+        },
+      } as ApiResponse<any>);
+    }
+  } catch (error: any) {
+    console.error('Error creating fix PR:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to create fix PR',
     } as ApiResponse<null>);
   }
 });

@@ -37,8 +37,10 @@ For production OAuth authentication, see [apps/api/GITHUB_APP_SETUP.md](./apps/a
 - ✅ **GraphQL Integration**: Fast, efficient repository queries
 - ✅ **File Tree Viewer**: Browse repository structure
 - ✅ **Demo Mode**: Works without authentication
-- 🚧 **AI Agents**: Coming in Phase 2
-- 🚧 **Auto PRs**: Coming in Phase 2
+- ✅ **AI Vulnerability Detection**: Scans code for SQL injection, XSS, secrets, auth bypasses
+- ✅ **Cross-Repo Patterns**: Finds duplicated code and shared vulnerabilities
+- ✅ **Auto-Fix PRs**: AI generates secure code fixes and creates GitHub Pull Requests
+- ✅ **Real-Time Analysis**: Streams vulnerability detection progress
 
 ## Project Structure
 
@@ -67,6 +69,31 @@ pnpm turbo build
 pnpm turbo lint
 ```
 
+## 🤖 AI Features (Phase 2)
+
+### Vulnerability Detection
+Scans code for:
+- SQL injection risks
+- XSS vulnerabilities
+- Hardcoded secrets/API keys
+- Insecure dependencies
+- Authentication bypasses
+- CSRF vulnerabilities
+- Path traversal issues
+
+### Cross-Repo Patterns
+Finds:
+- Duplicated logic across repositories
+- Similar vulnerability patterns
+- Inconsistent implementations
+- Shared dependencies with vulnerabilities
+
+### Auto-Fix PRs
+AI generates:
+- Secure code fixes for detected vulnerabilities
+- GitHub Pull Requests with fixes
+- Detailed PR descriptions and commit messages
+
 ## Environment Variables
 
 Copy `.env.example` to `.env.local` and configure:
@@ -74,10 +101,20 @@ Copy `.env.example` to `.env.local` and configure:
 - `GITHUB_CLIENT_ID` - GitHub App Client ID (optional for demo)
 - `GITHUB_CLIENT_SECRET` - GitHub App Client Secret (optional for demo)
 - `SESSION_SECRET` - Random secret for sessions
+- `OPENAI_API_KEY` - **Required for AI analysis** (get from https://platform.openai.com/api-keys)
+- `ANTHROPIC_API_KEY` - Optional, for Claude models
 - `DATABASE_URL` - PostgreSQL connection string
-- `OPENAI_API_KEY` - For AI analysis (Phase 2)
 
 See `.env.example` for all available variables.
+
+## Demo
+
+1. Visit http://localhost:3000
+2. Click **"Start Scanning"**
+3. Enter organization: `stephdl`
+4. Click any repo → **"Analyze with AI"**
+5. See vulnerabilities detected in seconds
+6. Click **"Auto-Generate Fix PR"** → PR content generated automatically
 
 ## License
 

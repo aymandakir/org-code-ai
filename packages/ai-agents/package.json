@@ -5,7 +5,9 @@
   "types": "./index.ts",
   "private": true,
   "dependencies": {
-    "openai": "^4.0.0"
+    "openai": "^4.0.0",
+    "@anthropic-ai/sdk": "^0.20.0",
+    "@org-code-ai/types": "workspace:*"
   },
   "devDependencies": {
     "typescript": "latest"

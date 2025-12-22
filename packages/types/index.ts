@@ -27,13 +27,14 @@ export type ScanResult = {
 };
 
 export type Finding = {
-  id: string;
-  type: 'security' | 'performance' | 'code-quality' | 'best-practice';
+  id?: string;
+  type: string;
   severity: 'low' | 'medium' | 'high' | 'critical';
-  file: string;
   line: number;
-  message: string;
-  suggestion: string;
+  file: string;
+  description: string;
+  fix?: string;
+  language?: string;
 };
 
 export type RepoFile = {
@@ -77,5 +78,19 @@ export type ApiResponse<T> = {
   data?: T;
   error?: string;
   message?: string;
+};
+
+export type Pattern = {
+  type: 'duplicate' | 'vulnerability' | 'inconsistency';
+  repos: string[];
+  description: string;
+  impact: 'low' | 'medium' | 'high';
+  affectedFiles: string[];
+};
+
+export type PRContent = {
+  title: string;
+  description: string;
+  commit_message: string;
 };
 

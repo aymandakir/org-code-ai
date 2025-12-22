@@ -185,12 +185,15 @@ export default function RepoScanPage() {
               <CardTitle className="text-sm font-medium">Actions</CardTitle>
             </CardHeader>
             <CardContent>
-              <Button disabled className="w-full" variant="outline">
+              <Button
+                className="w-full"
+                onClick={() => router.push(`/scan/${owner}/${repo}/analyze`)}
+              >
                 <Sparkles className="mr-2 h-4 w-4" />
                 Analyze with AI
               </Button>
               <p className="text-xs text-muted-foreground mt-2">
-                Coming in Phase 2
+                Scan for vulnerabilities
               </p>
             </CardContent>
           </Card>
