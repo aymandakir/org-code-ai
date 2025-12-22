@@ -75,9 +75,9 @@ router.get('/dashboard/overview', async (req, res) => {
       reposWithScores.length > 0
         ? Math.round(
             reposWithScores
-              .filter((r) => r.securityScores.length > 0)
+              .filter((r: { securityScores: Array<{ score: number }> }) => r.securityScores.length > 0)
               .reduce((sum: number, r: { securityScores: Array<{ score: number }> }) => sum + (r.securityScores[0]?.score || 0), 0) /
-              reposWithScores.filter((r) => r.securityScores.length > 0).length || 1
+              reposWithScores.filter((r: { securityScores: Array<{ score: number }> }) => r.securityScores.length > 0).length || 1
           )
         : 0;
 

@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { fetchSecurityScores, type SecurityScore } from '@/lib/api';
-import { TrendingUp, TrendingDown, Minus, Shield, AlertTriangle, Loader2 } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus, Shield, AlertTriangle } from 'lucide-react';
 
 export default function SecurityScorePage() {
   const [score, setScore] = useState<SecurityScore | null>(null);

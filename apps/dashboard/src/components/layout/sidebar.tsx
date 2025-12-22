@@ -7,8 +7,7 @@ import {
   Code, 
   Shield, 
   GitPullRequest, 
-  BarChart3,
-  Settings
+  BarChart3
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 

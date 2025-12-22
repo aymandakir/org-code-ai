@@ -21,7 +21,7 @@ export default function ScanPage() {
     setError(null);
 
     try {
-      const { repos, demoMode } = await fetchOrgRepos(orgName.trim());
+      const { repos } = await fetchOrgRepos(orgName.trim());
       
       if (repos.length > 0) {
         // Navigate to first repo or show list

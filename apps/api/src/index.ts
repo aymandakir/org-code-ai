@@ -544,7 +544,12 @@ app.get('/api/vulnerabilities', async (req, res) => {
     const token = (req.session as SessionData)?.githubToken || process.env.GITHUB_TOKEN;
 
     // Try to get from database first
-    const where: any = {};
+    const where: {
+      severity?: string;
+      type?: string;
+      repositoryId?: string;
+      isResolved?: boolean;
+    } = {};
     if (severity) {
       where.severity = severity.toString().toUpperCase();
     }

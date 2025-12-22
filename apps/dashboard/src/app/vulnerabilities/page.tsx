@@ -6,26 +6,25 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { fetchVulnerabilities, type VulnerabilityFilters } from '@/lib/api';
 import type { Finding } from '@/types';
-import { AlertTriangle, Filter, ExternalLink, Loader2 } from 'lucide-react';
+import { AlertTriangle, Filter } from 'lucide-react';
 
 export default function VulnerabilitiesPage() {
   const [vulnerabilities, setVulnerabilities] = useState<Finding[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [demoMode, setDemoMode] = useState(false);
   const [filters, setFilters] = useState<VulnerabilityFilters>({});
 
   useEffect(() => {
     loadVulnerabilities();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters]);
 
   const loadVulnerabilities = async () => {
     setLoading(true);
     setError(null);
     try {
-      const { vulnerabilities: vulns, demoMode: demo } = await fetchVulnerabilities(filters);
+      const { vulnerabilities: vulns } = await fetchVulnerabilities(filters);
       setVulnerabilities(vulns);
-      setDemoMode(demo);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load vulnerabilities');
     } finally {
@@ -68,18 +67,6 @@ export default function VulnerabilitiesPage() {
         <p className="text-gray-400 mt-2">View and manage security vulnerabilities across your repositories</p>
       </div>
 
-      {demoMode && (
-        <Card className="bg-blue-900/20 border-blue-800">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-2 text-blue-300">
-              <AlertTriangle className="h-5 w-5" />
-              <p className="text-sm">
-                <strong>Demo Mode:</strong> Showing mock vulnerability data. Connect GitHub App for real scans.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">

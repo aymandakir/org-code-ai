@@ -13,7 +13,6 @@ export interface ScanProgress {
 }
 
 export function useScanProgress() {
-  const [socket, setSocket] = useState<Socket | null>(null);
   const [progress, setProgress] = useState<ScanProgress>({
     isScanning: false,
     current: 0,
@@ -83,8 +82,6 @@ export function useScanProgress() {
         step: 'Scan completed!',
       });
     });
-
-    setSocket(socketInstance);
 
     return () => {
       socketInstance.disconnect();
