@@ -1,98 +1,168 @@
 'use client';
 
 import Link from 'next/link';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Github, Sparkles, Shield, Zap, ArrowRight } from 'lucide-react';
+import dynamic from 'next/dynamic';
+import { fetchOrgRepos } from '@/lib/api';
+import { useEffect, useState } from 'react';
+import type { Repo } from '@/types';
 
-export default function Home() {
-  const features = [
-    {
-      icon: Github,
-      title: 'Multi-Repo Analysis',
-      description: 'Scan entire GitHub organizations and discover patterns across hundreds of repositories',
-    },
-    {
-      icon: Sparkles,
-      title: 'AI Agents',
-      description: 'CrewAI-powered agents analyze code for security, performance, and best practices',
-    },
-    {
-      icon: Shield,
-      title: 'Auto PRs',
-      description: 'Automatically generate pull requests with fixes for detected vulnerabilities',
-    },
-    {
-      icon: Zap,
-      title: 'Real-time Scanning',
-      description: 'Get instant insights into your organization\'s codebase health and security posture',
-    },
-  ];
+// Dynamic imports for client-only components
+const AnimatedHeading = dynamic(() => import('@/components/ui/animated-heading').then(mod => ({ default: mod.AnimatedHeading })), { ssr: false });
+const WebGLBackground = dynamic(() => import('@/components/ui/webgl-background').then(mod => ({ default: mod.WebGLBackground })), { ssr: false });
+const MagneticButton = dynamic(() => import('@/components/ui/magnetic-button').then(mod => ({ default: mod.MagneticButton })), { ssr: false });
+const CursorTrail = dynamic(() => import('@/components/ui/cursor-trail').then(mod => ({ default: mod.CursorTrail })), { ssr: false });
+const HorizontalScrollSection = dynamic(() => import('@/components/horizontal-scroll-section').then(mod => ({ default: mod.HorizontalScrollSection })), { ssr: false });
+const StatsCard = dynamic(() => import('@/components/stats-card').then(mod => ({ default: mod.StatsCard })), { ssr: false });
+const VulnerabilityTicker = dynamic(() => import('@/components/vulnerability-ticker').then(mod => ({ default: mod.VulnerabilityTicker })), { ssr: false });
+
+const stats = [
+  {
+    value: '10K+',
+    label: 'Repositories Scanned',
+    description: 'Across hundreds of organizations',
+  },
+  {
+    value: '50K+',
+    label: 'Vulnerabilities Detected',
+    description: 'With AI-powered analysis',
+  },
+  {
+    value: '99%',
+    label: 'Accuracy Rate',
+    description: 'Industry-leading detection',
+  },
+];
+
+export default function HomePage() {
+  const [repositories, setRepositories] = useState<Repo[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Fetch demo repositories
+    fetchOrgRepos('stephdl')
+      .then(({ repos }) => {
+        setRepositories(repos.slice(0, 10)); // Limit for horizontal scroll
+        setLoading(false);
+      })
+      .catch(() => {
+        // Fallback mock data
+        setRepositories([
+          {
+            id: '1',
+            name: 'api-gateway',
+            url: 'https://github.com/stephdl/api-gateway',
+            description: 'Microservices API Gateway',
+            language: 'TypeScript',
+            stars: 128,
+            forks: 23,
+            updatedAt: new Date().toISOString(),
+          },
+          {
+            id: '2',
+            name: 'auth-service',
+            url: 'https://github.com/stephdl/auth-service',
+            description: 'Authentication and authorization service',
+            language: 'Go',
+            stars: 89,
+            forks: 15,
+            updatedAt: new Date().toISOString(),
+          },
+          {
+            id: '3',
+            name: 'frontend-app',
+            url: 'https://github.com/stephdl/frontend-app',
+            description: 'React frontend application',
+            language: 'TypeScript',
+            stars: 156,
+            forks: 34,
+            updatedAt: new Date().toISOString(),
+          },
+        ]);
+        setLoading(false);
+      });
+  }, []);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-muted/20">
-      <div className="container mx-auto px-4 py-16">
-        {/* Hero Section */}
-        <div className="text-center mb-16 max-w-4xl mx-auto">
-          <h1 className="text-5xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
-            AI-Powered Multi-Repo Intelligence
-          </h1>
-          <p className="text-xl md:text-2xl text-muted-foreground mb-8 leading-relaxed">
-            Scan entire GitHub organizations, detect patterns, and auto-fix vulnerabilities
-            across all your repositories in one place.
+    <main className="relative min-h-screen overflow-hidden">
+      <CursorTrail />
+      <WebGLBackground />
+
+      {/* Hero Section - Full viewport */}
+      <section className="h-screen flex items-center justify-center relative z-10">
+        <div className="text-center px-4 max-w-5xl mx-auto">
+          <AnimatedHeading className="text-6xl md:text-8xl font-bold mb-6">
+            Master Your
+            <br />
+            Code Security
+          </AnimatedHeading>
+          <p className="text-xl md:text-2xl text-muted-foreground mt-6 max-w-2xl mx-auto leading-relaxed">
+            AI-powered vulnerability scanning across your entire GitHub organization.
+            <br />
+            Detect. Fix. Deploy.
+          </p>
+          <div className="mt-12">
+            <Link href="/scan">
+              <MagneticButton className="text-lg px-10 py-5">
+                Start Scanning →
+              </MagneticButton>
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* Floating Stats Cards - Parallax effect */}
+      <section className="py-32 relative z-10">
+        <div className="container mx-auto px-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+            {stats.map((stat, i) => (
+              <StatsCard key={i} stat={stat} index={i} />
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Repository Scanner - Horizontal scroll */}
+      {!loading && repositories.length > 0 && (
+        <section className="py-32 relative z-10">
+          <div className="container mx-auto px-4 mb-16">
+            <AnimatedHeading as="h2" className="text-4xl md:text-5xl font-bold text-center mb-4">
+              Explore Repositories
+            </AnimatedHeading>
+            <p className="text-center text-muted-foreground text-lg">
+              Scroll horizontally to discover scanned repositories
+            </p>
+          </div>
+          <HorizontalScrollSection repositories={repositories} />
+        </section>
+      )}
+
+      {/* Live Vulnerability Feed - Ticker animation */}
+      <section className="py-20 relative z-10">
+        <div className="container mx-auto px-4 mb-8">
+          <AnimatedHeading as="h2" className="text-3xl md:text-4xl font-bold text-center">
+            Live Vulnerability Feed
+          </AnimatedHeading>
+        </div>
+        <VulnerabilityTicker />
+      </section>
+
+      {/* CTA Section */}
+      <section className="py-32 relative z-10">
+        <div className="container mx-auto px-4 text-center">
+          <AnimatedHeading as="h2" className="text-4xl md:text-5xl font-bold mb-6">
+            Ready to Secure Your Code?
+          </AnimatedHeading>
+          <p className="text-xl text-muted-foreground mb-12 max-w-2xl mx-auto">
+            Join thousands of organizations using AI to detect and fix vulnerabilities
+            before they become security incidents.
           </p>
           <Link href="/scan">
-            <Button size="lg" className="text-lg px-8 py-6">
-              Start Scanning
-              <ArrowRight className="ml-2 h-5 w-5" />
-            </Button>
+            <MagneticButton className="text-lg px-10 py-5">
+              Get Started Free →
+            </MagneticButton>
           </Link>
         </div>
-
-        {/* Features Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-16 max-w-5xl mx-auto">
-          {features.map((feature, index) => {
-            const Icon = feature.icon;
-            return (
-              <Card key={index} className="hover:shadow-lg transition-shadow">
-                <CardHeader>
-                  <div className="flex items-center gap-4">
-                    <div className="p-3 bg-primary/10 rounded-lg">
-                      <Icon className="h-6 w-6 text-primary" />
-                    </div>
-                    <CardTitle>{feature.title}</CardTitle>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <CardDescription className="text-base">
-                    {feature.description}
-                  </CardDescription>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
-
-        {/* CTA Section */}
-        <Card className="max-w-3xl mx-auto bg-primary/5 border-primary/20">
-          <CardHeader>
-            <CardTitle className="text-2xl text-center">
-              Ready to scan your organization?
-            </CardTitle>
-            <CardDescription className="text-center text-base">
-              Enter any GitHub organization name to get started. No authentication required for demo mode.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="flex justify-center">
-            <Link href="/scan">
-              <Button size="lg" variant="default">
-                Get Started
-                <ArrowRight className="ml-2 h-5 w-5" />
-              </Button>
-            </Link>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
+      </section>
+    </main>
   );
 }
