@@ -714,7 +714,7 @@ app.get('/api/pull-requests', async (req, res) => {
     const token = (req.session as SessionData)?.githubToken || process.env.GITHUB_TOKEN;
 
     // Try to get from database first
-    const where: any = {};
+    const where: Record<string, unknown> = {};
     if (status) {
       where.status = status.toString().toLowerCase();
     }

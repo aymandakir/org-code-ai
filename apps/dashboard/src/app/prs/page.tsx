@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { fetchPullRequests, type PRFilters, type PullRequest } from '@/lib/api';
-import { GitPullRequest, ExternalLink, CheckCircle, XCircle, Clock, Loader2 } from 'lucide-react';
+import { GitPullRequest, ExternalLink, CheckCircle, XCircle, Clock } from 'lucide-react';
 
 export default function PullRequestsPage() {
   const [prs, setPRs] = useState<PullRequest[]>([]);
