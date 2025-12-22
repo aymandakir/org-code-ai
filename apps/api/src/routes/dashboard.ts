@@ -46,11 +46,11 @@ router.get('/dashboard/overview', async (req, res) => {
 
         const vulnStats = {
           total: vulnerabilities.reduce((sum: number, v: { _count: number }) => sum + v._count, 0),
-      critical: vulnerabilities.find((v) => v.severity === 'CRITICAL')?._count || 0,
-      high: vulnerabilities.find((v) => v.severity === 'HIGH')?._count || 0,
-      medium: vulnerabilities.find((v) => v.severity === 'MEDIUM')?._count || 0,
-      low: vulnerabilities.find((v) => v.severity === 'LOW')?._count || 0,
-    };
+          critical: vulnerabilities.find((v: { severity: string; _count: number }) => v.severity === 'CRITICAL')?._count || 0,
+          high: vulnerabilities.find((v: { severity: string; _count: number }) => v.severity === 'HIGH')?._count || 0,
+          medium: vulnerabilities.find((v: { severity: string; _count: number }) => v.severity === 'MEDIUM')?._count || 0,
+          low: vulnerabilities.find((v: { severity: string; _count: number }) => v.severity === 'LOW')?._count || 0,
+        };
 
     // New vulnerabilities this month
     const newVulnsThisMonth = await prisma.vulnerability.count({
