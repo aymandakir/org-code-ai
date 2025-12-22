@@ -36,3 +36,46 @@ export type Finding = {
   suggestion: string;
 };
 
+export type RepoFile = {
+  name: string;
+  path: string;
+  type: 'file' | 'dir';
+  size?: number;
+  sha?: string;
+  url?: string;
+};
+
+export type FileTree = {
+  files: RepoFile[];
+  totalFiles: number;
+  languages: string[];
+};
+
+export type ScanProgress = {
+  repoId: string;
+  repoName: string;
+  status: 'pending' | 'scanning' | 'completed' | 'failed';
+  filesScanned: number;
+  totalFiles: number;
+  findings: Finding[];
+  error?: string;
+};
+
+export type GitHubAuthResponse = {
+  access_token: string;
+  token_type: string;
+  scope: string;
+};
+
+export type OAuthState = {
+  redirectUrl?: string;
+  orgName?: string;
+};
+
+export type ApiResponse<T> = {
+  success: boolean;
+  data?: T;
+  error?: string;
+  message?: string;
+};
+
