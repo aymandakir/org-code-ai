@@ -255,7 +255,7 @@ export default function AnalyzePage() {
                           {finding.type.replace(/_/g, ' ')}
                         </CardTitle>
                       </div>
-                      <Badge variant={getSeverityColor(finding.severity) as any}>
+                      <Badge variant={getSeverityColor(finding.severity) as "default" | "secondary" | "destructive" | "outline"}>
                         {finding.severity}
                       </Badge>
                     </div>
