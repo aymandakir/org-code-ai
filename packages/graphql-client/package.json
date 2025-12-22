@@ -6,7 +6,7 @@
   "private": true,
   "dependencies": {
     "@octokit/graphql": "^7.0.0",
-    "@org-code-ai/types": "workspace:*"
+    "@org-code-ai/types": "*"
   },
   "devDependencies": {
     "typescript": "latest"
