@@ -16,6 +16,7 @@ export default function PullRequestsPage() {
 
   useEffect(() => {
     loadPRs();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters]);
 
   const loadPRs = async () => {

@@ -37,7 +37,7 @@ router.get('/metrics/mttf', async (req, res) => {
       LOW: [],
     };
 
-    fixedVulns.forEach((vuln) => {
+    fixedVulns.forEach((vuln: { resolvedAt: Date | null; createdAt: Date; severity: string }) => {
       if (vuln.resolvedAt) {
         const timeDiff = vuln.resolvedAt.getTime() - vuln.createdAt.getTime();
         const hours = timeDiff / (1000 * 60 * 60);
@@ -106,7 +106,7 @@ router.get('/metrics/density', async (req, res) => {
 
     // Estimate lines of code (in production, you'd fetch this from GitHub)
     // For now, use a placeholder or fetch from repo metadata
-    const density = repos.map((repo) => {
+    const density = repos.map((repo: { name: string; id: string; linesOfCode: number | null; vulnerabilities: unknown[] }) => {
       // Placeholder: estimate LOC based on repo size or use 0
       const linesOfCode = 0; // TODO: Fetch from GitHub API or store in DB
       const vulnCount = repo.vulnerabilities.length;
@@ -260,7 +260,7 @@ router.get('/metrics/velocity', async (req, res) => {
     // Group by date
     const dailyMap = new Map<string, { new: number; resolved: number }>();
 
-    allVulns.forEach((vuln) => {
+    allVulns.forEach((vuln: { createdAt: Date; isResolved: boolean; resolvedAt: Date | null }) => {
       const dateKey = vuln.createdAt.toISOString().split('T')[0];
       if (!dailyMap.has(dateKey)) {
         dailyMap.set(dateKey, { new: 0, resolved: 0 });
@@ -270,8 +270,8 @@ router.get('/metrics/velocity', async (req, res) => {
     });
 
     // Count resolved by date
-    const resolvedVulns = allVulns.filter((v) => v.isResolved && v.resolvedAt);
-    resolvedVulns.forEach((vuln) => {
+    const resolvedVulns = allVulns.filter((v: { isResolved: boolean; resolvedAt: Date | null }) => v.isResolved && v.resolvedAt);
+    resolvedVulns.forEach((vuln: { resolvedAt: Date | null; createdAt: Date }) => {
       if (vuln.resolvedAt) {
         const dateKey = vuln.resolvedAt.toISOString().split('T')[0];
         if (!dailyMap.has(dateKey)) {
@@ -372,7 +372,7 @@ router.get('/metrics/attack-surface', async (req, res) => {
       if (repo.stars > 1000) repoScore += 20;
 
       // Add vulnerability weight
-      repo.vulnerabilities.forEach((v) => {
+      repo.vulnerabilities.forEach((v: { severity: string }) => {
         const weights: Record<string, number> = { CRITICAL: 10, HIGH: 5, MEDIUM: 2, LOW: 1 };
         repoScore += weights[v.severity] || 0;
       });
@@ -440,7 +440,7 @@ router.get('/metrics/compliance', async (req, res) => {
     };
 
     const owaspCoverage: Record<string, number> = {};
-    vulns.forEach((v) => {
+    vulns.forEach((v: { type: string }) => {
       const owaspCat = owaspMapping[v.type];
       if (owaspCat) {
         owaspCoverage[owaspCat] = (owaspCoverage[owaspCat] || 0) + 1;

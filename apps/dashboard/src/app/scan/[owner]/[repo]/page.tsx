@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { fetchRepoScan } from '@/lib/api';
 import type { RepoFile } from '@/types';
-import { ArrowLeft, File, Folder, Code, Sparkles, Loader2 } from 'lucide-react';
+import { ArrowLeft, File, Folder, Code, Sparkles } from 'lucide-react';
 
 export default function RepoScanPage() {
   const params = useParams();

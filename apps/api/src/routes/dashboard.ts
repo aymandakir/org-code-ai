@@ -60,17 +60,6 @@ router.get('/dashboard/overview', async (req, res) => {
       },
     });
 
-    // Average security score (current)
-    const currentScores = await prisma.securityScore.findMany({
-      where: {
-        repository: { organizationId: orgId },
-        createdAt: { gte: firstDayThisMonth },
-      },
-      orderBy: { createdAt: 'desc' },
-      distinct: ['repositoryId'],
-      select: { score: true },
-    });
-
     // Get latest score per repository
     const reposWithScores = await prisma.repository.findMany({
       where: { organizationId: orgId },
