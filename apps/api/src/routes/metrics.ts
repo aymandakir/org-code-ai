@@ -94,10 +94,7 @@ router.get('/metrics/density', async (req, res) => {
 
     const repos = await prisma.repository.findMany({
       where: { organizationId: orgId },
-      select: {
-        id: true,
-        name: true,
-        linesOfCode: true,
+      include: {
         vulnerabilities: {
           where: { isResolved: false },
         },
