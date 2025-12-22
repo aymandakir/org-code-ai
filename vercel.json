@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "buildCommand": "cd apps/dashboard && npm install && npm run build -- --webpack",
+  "buildCommand": "cd apps/dashboard && npm install && CI=false npm run build -- --webpack",
   "outputDirectory": "apps/dashboard/.next",
   "installCommand": "cd apps/dashboard && npm install",
   "framework": "nextjs"
