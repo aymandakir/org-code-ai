@@ -2,195 +2,131 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Button } from '@/components/ui/button';
+import { Search, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { fetchOrgRepos } from '@/lib/api';
-import type { Repo } from '@/types';
-import { Search, Github, Star, GitFork, Calendar, AlertCircle } from 'lucide-react';
 
 export default function ScanPage() {
-  const router = useRouter();
   const [orgName, setOrgName] = useState('');
-  const [repos, setRepos] = useState<Repo[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [demoMode, setDemoMode] = useState(false);
+  const router = useRouter();
 
-  const handleScan = async () => {
-    if (!orgName.trim()) {
-      setError('Please enter an organization name');
-      return;
-    }
+  const handleScan = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!orgName.trim()) return;
 
     setLoading(true);
     setError(null);
-    setRepos([]);
 
     try {
-      const result = await fetchOrgRepos(orgName.trim());
-      setRepos(result.repos);
-      setDemoMode(result.demoMode);
-    } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch repositories. Please try again or connect your GitHub App.';
-      setError(errorMessage);
+      const { repos, demoMode } = await fetchOrgRepos(orgName.trim());
+      
+      if (repos.length > 0) {
+        // Navigate to first repo or show list
+        const firstRepo = repos[0];
+        const [owner] = firstRepo.url.split('/').slice(-2);
+        router.push(`/scan/${owner}/${firstRepo.name}`);
+      } else {
+        setError('No repositories found for this organization');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to scan organization');
     } finally {
       setLoading(false);
     }
   };
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
-  };
-
   return (
-    <div className="container mx-auto py-8 px-4">
-      <div className="max-w-6xl mx-auto">
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold mb-2">Scan GitHub Organization</h1>
-          <p className="text-muted-foreground">
-            Enter an organization name to discover and analyze all repositories
-          </p>
-        </div>
+    <div className="space-y-8">
+      {/* Page Header */}
+      <div>
+        <h1 className="text-3xl font-bold text-white">Scan Organization</h1>
+        <p className="text-gray-400 mt-2">Enter a GitHub organization name to scan all repositories</p>
+      </div>
 
-        <Card className="mb-8">
-          <CardHeader>
-            <CardTitle>Organization Scanner</CardTitle>
-            <CardDescription>
-              Enter the GitHub organization name (e.g., &quot;stephdl&quot;)
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex gap-4">
-              <div className="flex-1">
+      {/* Scan Form */}
+      <Card className="bg-gray-900 border-gray-800">
+        <CardHeader>
+          <CardTitle className="text-white">Organization Scanner</CardTitle>
+          <CardDescription className="text-gray-400">
+            Scan all repositories in a GitHub organization for security vulnerabilities
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleScan} className="space-y-4">
+            <div>
+              <label htmlFor="org-name" className="block text-sm font-medium text-gray-300 mb-2">
+                Organization Name
+              </label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                 <input
+                  id="org-name"
                   type="text"
-                  placeholder="stephdl"
                   value={orgName}
                   onChange={(e) => setOrgName(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleScan()}
-                  className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                  placeholder="e.g., stephdl, microsoft, vercel"
+                  className="w-full pl-10 pr-4 py-3 bg-gray-800 border border-gray-700 rounded-md text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  disabled={loading}
+                  required
                 />
               </div>
-              <Button onClick={handleScan} disabled={loading}>
-                {loading ? (
-                  <>
-                    <span className="animate-spin mr-2">⏳</span>
-                    Scanning...
-                  </>
-                ) : (
-                  <>
-                    <Search className="mr-2 h-4 w-4" />
-                    Scan Organization
-                  </>
-                )}
-              </Button>
+              <p className="text-xs text-gray-500 mt-2">
+                Enter the GitHub organization login (username)
+              </p>
             </div>
+
             {error && (
-              <div className="mt-4 p-3 bg-destructive/10 text-destructive rounded-md flex items-center gap-2">
-                <AlertCircle className="h-4 w-4" />
-                {error}
+              <div className="p-3 bg-red-900/20 border border-red-800 rounded-md">
+                <p className="text-sm text-red-400">{error}</p>
               </div>
             )}
-          </CardContent>
-        </Card>
 
-        {demoMode && (
-          <Card className="mb-8 border-yellow-500 bg-yellow-50 dark:bg-yellow-950">
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-2 text-yellow-800 dark:text-yellow-200">
-                <AlertCircle className="h-5 w-5" />
-                <p className="font-medium">
-                  Using demo data. Connect GitHub App for real scans.
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        )}
+            <Button
+              type="submit"
+              disabled={loading || !orgName.trim()}
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Scanning...
+                </>
+              ) : (
+                'Start Scan'
+              )}
+            </Button>
+          </form>
 
-        {loading && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {[...Array(6)].map((_, i) => (
-              <Card key={i} className="animate-pulse">
-                <CardHeader>
-                  <div className="h-4 bg-muted rounded w-3/4"></div>
-                  <div className="h-3 bg-muted rounded w-1/2 mt-2"></div>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-3 bg-muted rounded w-full mb-2"></div>
-                  <div className="h-3 bg-muted rounded w-2/3"></div>
-                </CardContent>
-              </Card>
-            ))}
+          {/* Demo Mode Banner */}
+          <div className="mt-6 p-4 bg-blue-900/20 border border-blue-800 rounded-md">
+            <p className="text-sm text-blue-300">
+              <strong>Demo Mode:</strong> Using mock data. Connect GitHub App for real scans.
+            </p>
           </div>
-        )}
+        </CardContent>
+      </Card>
 
-        {!loading && repos.length > 0 && (
-          <div>
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-2xl font-semibold">
-                Found {repos.length} {repos.length === 1 ? 'Repository' : 'Repositories'}
-              </h2>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {repos.map((repo) => (
-                <Card
-                  key={repo.id}
-                  className="hover:shadow-lg transition-shadow cursor-pointer"
-                  onClick={() => router.push(`/scan/${orgName}/${repo.name}`)}
-                >
-                  <CardHeader>
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center gap-2">
-                        <Github className="h-5 w-5 text-muted-foreground" />
-                        <CardTitle className="text-lg">{repo.name}</CardTitle>
-                      </div>
-                    </div>
-                    {repo.description && (
-                      <CardDescription className="line-clamp-2">
-                        {repo.description}
-                      </CardDescription>
-                    )}
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex flex-wrap gap-2 mb-4">
-                      {repo.language && (
-                        <Badge variant="secondary">{repo.language}</Badge>
-                      )}
-                      <Badge variant="outline" className="flex items-center gap-1">
-                        <Star className="h-3 w-3" />
-                        {repo.stars}
-                      </Badge>
-                      <Badge variant="outline" className="flex items-center gap-1">
-                        <GitFork className="h-3 w-3" />
-                        {repo.forks}
-                      </Badge>
-                    </div>
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Calendar className="h-4 w-4" />
-                      Updated {formatDate(repo.updatedAt)}
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {!loading && repos.length === 0 && orgName && !error && (
-          <Card>
-            <CardContent className="pt-6 text-center text-muted-foreground">
-              No repositories found. Try a different organization name.
-            </CardContent>
-          </Card>
-        )}
+      {/* Quick Links */}
+      <div>
+        <h2 className="text-lg font-semibold text-white mb-4">Try These Organizations</h2>
+        <div className="flex flex-wrap gap-2">
+          {['stephdl', 'microsoft', 'vercel', 'github'].map((org) => (
+            <button
+              key={org}
+              onClick={() => {
+                setOrgName(org);
+                handleScan({ preventDefault: () => {} } as React.FormEvent);
+              }}
+              className="px-4 py-2 bg-gray-800 text-gray-300 rounded-md text-sm hover:bg-gray-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              {org}
+            </button>
+          ))}
+        </div>
       </div>
     </div>
   );
 }
-

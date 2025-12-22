@@ -115,6 +115,23 @@
   --sidebar-ring: oklch(0.556 0 0);
 }
 
+/* GitHub-inspired color palette with proper contrast */
+@layer utilities {
+  .text-gray-50 { color: #fafafa; } /* WCAG AAA on dark bg */
+  .text-gray-100 { color: #f5f5f5; } /* WCAG AAA */
+  .text-gray-200 { color: #e5e5e5; } /* WCAG AAA */
+  .text-gray-300 { color: #d4d4d4; } /* WCAG AA */
+  .text-gray-400 { color: #a3a3a3; } /* WCAG AA */
+  .text-gray-500 { color: #737373; } /* WCAG AA */
+  .text-gray-600 { color: #525252; } /* WCAG AA */
+  
+  .bg-gray-900 { background-color: #171717; }
+  .bg-gray-800 { background-color: #262626; }
+  .bg-gray-700 { background-color: #404040; }
+  .border-gray-800 { border-color: #262626; }
+  .border-gray-700 { border-color: #404040; }
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

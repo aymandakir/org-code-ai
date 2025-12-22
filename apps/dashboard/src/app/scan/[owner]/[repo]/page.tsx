@@ -2,12 +2,13 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { fetchRepoScan } from '@/lib/api';
 import type { RepoFile } from '@/types';
-import { ArrowLeft, File, Folder, Code, AlertCircle, Sparkles } from 'lucide-react';
+import { ArrowLeft, File, Folder, Code, Sparkles, Loader2 } from 'lucide-react';
 
 export default function RepoScanPage() {
   const params = useParams();
@@ -20,20 +21,24 @@ export default function RepoScanPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const loadRepoData = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await fetchRepoScan(owner, repo);
-      setFiles(data.files);
-      setLanguages(data.languages);
-    } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to load repository data';
-      setError(errorMessage);
-    } finally {
-      setLoading(false);
-    }
-  };
+  useEffect(() => {
+    const loadRepoData = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const data = await fetchRepoScan(owner, repo);
+        setFiles(data.files);
+        setLanguages(data.languages);
+      } catch (err: unknown) {
+        const errorMessage = err instanceof Error ? err.message : 'Failed to load repository data';
+        setError(errorMessage);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadRepoData();
+  }, [owner, repo]);
 
   const renderFileTree = (files: RepoFile[], pathPrefix = '') => {
     const filteredFiles = pathPrefix
@@ -48,7 +53,6 @@ export default function RepoScanPage() {
             ? file.path.replace(pathPrefix + '/', '').split('/')[0]
             : file.name;
 
-          // Check if this item was already rendered
           const key = pathPrefix ? `${pathPrefix}/${displayName}` : displayName;
           const alreadyRendered = files.some(
             (f, idx) =>
@@ -69,15 +73,15 @@ export default function RepoScanPage() {
 
           return (
             <div key={file.path} className="pl-4">
-              <div className="flex items-center gap-2 py-1 hover:bg-muted/50 rounded px-2">
+              <div className="flex items-center gap-2 py-1 hover:bg-gray-800/50 rounded px-2">
                 {isDir ? (
-                  <Folder className="h-4 w-4 text-blue-500" />
+                  <Folder className="h-4 w-4 text-blue-400" />
                 ) : (
-                  <File className="h-4 w-4 text-muted-foreground" />
+                  <File className="h-4 w-4 text-gray-400" />
                 )}
-                <span className="text-sm font-mono">{displayName}</span>
+                <span className="text-sm font-mono text-gray-300">{displayName}</span>
                 {!isDir && file.size && (
-                  <span className="text-xs text-muted-foreground ml-auto">
+                  <span className="text-xs text-gray-500 ml-auto">
                     {(file.size / 1024).toFixed(1)} KB
                   </span>
                 )}
@@ -92,130 +96,125 @@ export default function RepoScanPage() {
     );
   };
 
-  if (loading) {
-    return (
-      <div className="container mx-auto py-8 px-4">
-        <div className="max-w-4xl mx-auto">
-          <Card>
-            <CardContent className="pt-6">
-              <div className="animate-pulse space-y-4">
-                <div className="h-8 bg-muted rounded w-1/3"></div>
-                <div className="h-4 bg-muted rounded w-1/2"></div>
-                <div className="space-y-2">
-                  {[...Array(5)].map((_, i) => (
-                    <div key={i} className="h-4 bg-muted rounded"></div>
-                  ))}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="container mx-auto py-8 px-4">
-      <div className="max-w-4xl mx-auto">
-        <div className="mb-6">
-          <Button
-            variant="ghost"
-            onClick={() => router.push('/scan')}
-            className="mb-4"
-          >
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Scanner
-          </Button>
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold mb-2">
-                {owner}/{repo}
-              </h1>
-              <p className="text-muted-foreground">
-                Repository file structure and analysis
-              </p>
-            </div>
+    <div className="space-y-6">
+      {/* Header */}
+      <div>
+        <Link
+          href="/scan"
+          className="inline-flex items-center gap-2 text-sm text-gray-400 hover:text-white mb-4 transition-colors"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Back to Scanner
+        </Link>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-white">
+              {owner}/{repo}
+            </h1>
+            <p className="text-gray-400 mt-2">Repository file structure and analysis</p>
           </div>
         </div>
+      </div>
 
-        {error && (
-          <Card className="mb-6 border-destructive">
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-2 text-destructive">
-                <AlertCircle className="h-5 w-5" />
-                {error}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm font-medium">Total Files</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{files.length}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm font-medium">Languages</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-wrap gap-1">
-                {languages.slice(0, 3).map((lang) => (
-                  <Badge key={lang} variant="secondary">
-                    {lang}
-                  </Badge>
-                ))}
-                {languages.length > 3 && (
-                  <Badge variant="outline">+{languages.length - 3}</Badge>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm font-medium">Actions</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Button
-                className="w-full"
-                onClick={() => router.push(`/scan/${owner}/${repo}/analyze`)}
-              >
-                <Sparkles className="mr-2 h-4 w-4" />
-                Analyze with AI
-              </Button>
-              <p className="text-xs text-muted-foreground mt-2">
-                Scan for vulnerabilities
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-2">
+      {error && (
+        <Card className="bg-gray-900 border-red-800">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-2 text-red-400">
               <Code className="h-5 w-5" />
-              <CardTitle>File Structure</CardTitle>
+              <p>{error}</p>
             </div>
-            <CardDescription>
-              Browse the repository file tree
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {files.length > 0 ? (
-              <div className="font-mono text-sm">{renderFileTree(files)}</div>
-            ) : (
-              <p className="text-muted-foreground text-center py-8">
-                No files found
-              </p>
-            )}
           </CardContent>
         </Card>
-      </div>
+      )}
+
+      {loading ? (
+        <div className="space-y-4">
+          <div className="h-8 bg-gray-800 rounded w-1/3 animate-pulse"></div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {[1, 2, 3].map((i) => (
+              <Card key={i} className="bg-gray-900 border-gray-800 animate-pulse">
+                <CardHeader>
+                  <div className="h-4 bg-gray-800 rounded w-1/2"></div>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-8 bg-gray-800 rounded"></div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <>
+          {/* Stats Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Card className="bg-gray-900 border-gray-800">
+              <CardHeader>
+                <CardTitle className="text-sm font-medium text-gray-400">Total Files</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-white">{files.length}</div>
+              </CardContent>
+            </Card>
+            <Card className="bg-gray-900 border-gray-800">
+              <CardHeader>
+                <CardTitle className="text-sm font-medium text-gray-400">Languages</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-wrap gap-1">
+                  {languages.slice(0, 3).map((lang) => (
+                    <Badge key={lang} variant="secondary" className="bg-gray-800 text-gray-300">
+                      {lang}
+                    </Badge>
+                  ))}
+                  {languages.length > 3 && (
+                    <Badge variant="outline" className="border-gray-700 text-gray-400">
+                      +{languages.length - 3}
+                    </Badge>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="bg-gray-900 border-gray-800">
+              <CardHeader>
+                <CardTitle className="text-sm font-medium text-gray-400">Actions</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Button
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                  onClick={() => router.push(`/scan/${owner}/${repo}/analyze`)}
+                >
+                  <Sparkles className="mr-2 h-4 w-4" />
+                  Analyze with AI
+                </Button>
+                <p className="text-xs text-gray-500 mt-2">Scan for vulnerabilities</p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* File Tree */}
+          <Card className="bg-gray-900 border-gray-800">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Code className="h-5 w-5 text-gray-400" />
+                <CardTitle className="text-white">File Structure</CardTitle>
+              </div>
+              <CardDescription className="text-gray-400">
+                Browse the repository file tree
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {files.length > 0 ? (
+                <div className="font-mono text-sm bg-gray-950 rounded-md p-4 border border-gray-800">
+                  {renderFileTree(files)}
+                </div>
+              ) : (
+                <p className="text-gray-400 text-center py-8">No files found</p>
+              )}
+            </CardContent>
+          </Card>
+        </>
+      )}
     </div>
   );
 }
-

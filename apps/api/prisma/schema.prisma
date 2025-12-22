@@ -1,0 +1,252 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ============================================
+// CORE DOMAIN MODELS
+// ============================================
+
+model Organization {
+  id          String  @id @default(uuid())
+  githubId    String  @unique
+  login       String  @unique // GitHub org login (e.g., "stephdl")
+  name        String?
+  avatarUrl   String?
+  url         String? // GitHub URL
+  description String? @db.Text
+
+  // Relations
+  repositories      Repository[]
+  scans             Scan[]
+  securityScores    SecurityScore[]
+  crossRepoPatterns CrossRepoPattern[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([login])
+  @@index([githubId])
+  @@map("organizations")
+}
+
+model Repository {
+  id             String  @id @default(uuid())
+  organizationId String
+  githubId       String  @unique
+  name           String // Repository name (e.g., "api-gateway")
+  fullName       String  @unique // "owner/repo"
+  url            String
+  description    String? @db.Text
+  language       String?
+  stars          Int     @default(0)
+  forks          Int     @default(0)
+  defaultBranch  String  @default("main")
+  isPrivate      Boolean @default(false)
+
+  // Relations
+  organization     Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  scans            Scan[]
+  vulnerabilities  Vulnerability[]
+  securityScores   SecurityScore[]
+  pullRequestFixes PullRequestFix[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([organizationId])
+  @@index([fullName])
+  @@index([githubId])
+  @@map("repositories")
+}
+
+enum ScanStatus {
+  PENDING
+  QUEUED
+  SCANNING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+model Scan {
+  id             String     @id @default(uuid())
+  organizationId String?
+  repositoryId   String?
+  status         ScanStatus @default(PENDING)
+  startedAt      DateTime?
+  completedAt    DateTime?
+  filesScanned   Int        @default(0)
+  totalFiles     Int        @default(0)
+  error          String?    @db.Text
+
+  // Relations
+  organization    Organization?   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  repository      Repository?     @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+  vulnerabilities Vulnerability[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([organizationId])
+  @@index([repositoryId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("scans")
+}
+
+enum VulnerabilityType {
+  SQL_INJECTION
+  XSS
+  SECRET_LEAK
+  AUTH_BYPASS
+  CSRF
+  PATH_TRAVERSAL
+  DEPENDENCY_VULNERABILITY
+  INSECURE_DESERIALIZATION
+  XXE
+  SSRF
+  OTHER
+}
+
+enum VulnerabilitySeverity {
+  CRITICAL
+  HIGH
+  MEDIUM
+  LOW
+  INFO
+}
+
+model Vulnerability {
+  id                 String                @id @default(uuid())
+  scanId             String
+  repositoryId       String
+  type               VulnerabilityType
+  severity           VulnerabilitySeverity
+  filePath           String
+  lineStart          Int
+  lineEnd            Int?
+  shortTitle         String
+  description        String                @db.Text
+  exploitExample     String?               @db.Text
+  fixStrategy        String?               @db.Text
+  suggestedCodePatch String?               @db.Text
+  language           String?
+  isResolved         Boolean               @default(false)
+  resolvedAt         DateTime?
+  resolvedBy         String? // User ID or system
+
+  // Relations
+  scan             Scan             @relation(fields: [scanId], references: [id], onDelete: Cascade)
+  repository       Repository       @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+  suggestedFixes   SuggestedFix[]
+  pullRequestFixes PullRequestFix[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([repositoryId])
+  @@index([scanId])
+  @@index([type])
+  @@index([severity])
+  @@index([isResolved])
+  @@index([createdAt])
+  @@map("vulnerabilities")
+}
+
+model SuggestedFix {
+  id              String  @id @default(uuid())
+  vulnerabilityId String
+  codePatch       String  @db.Text
+  explanation     String  @db.Text
+  testCases       String? @db.Text
+  confidence      Float   @default(0.0) // 0.0 to 1.0
+
+  // Relations
+  vulnerability Vulnerability @relation(fields: [vulnerabilityId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([vulnerabilityId])
+  @@map("suggested_fixes")
+}
+
+model PullRequestFix {
+  id              String    @id @default(uuid())
+  repositoryId    String
+  vulnerabilityId String? // Nullable for bulk fixes
+  prUrl           String
+  branchName      String
+  prNumber        Int?
+  title           String
+  description     String    @db.Text
+  commitMessage   String
+  commitSha       String?
+  status          String    @default("open") // open, merged, closed, rejected
+  mergedAt        DateTime?
+  rejectedAt      DateTime?
+
+  // Relations
+  repository    Repository     @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+  vulnerability Vulnerability? @relation(fields: [vulnerabilityId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([repositoryId])
+  @@index([vulnerabilityId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("pull_request_fixes")
+}
+
+model SecurityScore {
+  id             String  @id @default(uuid())
+  organizationId String?
+  repositoryId   String?
+  score          Int // 0-100
+  breakdown      Json? // Detailed breakdown: { critical: -20, high: -10, ... }
+  trend          Json? // Historical trend data
+
+  // Relations
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  repository   Repository?   @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([organizationId])
+  @@index([repositoryId])
+  @@index([score])
+  @@index([createdAt])
+  @@map("security_scores")
+}
+
+model CrossRepoPattern {
+  id             String @id @default(uuid())
+  organizationId String
+  type           String // "duplicate", "vulnerability", "inconsistency"
+  description    String @db.Text
+  impact         String // "low", "medium", "high"
+  affectedRepos  Json // Array of repo IDs
+  affectedFiles  Json // Array of file paths across repos
+  metadata       Json? // Additional pattern-specific data
+
+  // Relations
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([organizationId])
+  @@index([type])
+  @@index([createdAt])
+  @@map("cross_repo_patterns")
+}
