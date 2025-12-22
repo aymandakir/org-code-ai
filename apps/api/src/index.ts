@@ -15,6 +15,7 @@ import {
 import { fetchOrgRepos, fetchRepoFiles } from '@org-code-ai/graphql-client';
 import type { ApiResponse, Finding, Pattern, RepoFile } from '@org-code-ai/types';
 import { prisma } from './lib/prisma';
+import { VulnerabilitySeverity, VulnerabilityType } from '@prisma/client';
 import { GitHubScanner } from './services/github-scanner';
 import dashboardRoutes from './routes/dashboard';
 import metricsRoutes from './routes/metrics';
@@ -545,16 +546,22 @@ app.get('/api/vulnerabilities', async (req, res) => {
 
     // Try to get from database first
     const where: {
-      severity?: string;
-      type?: string;
+      severity?: VulnerabilitySeverity;
+      type?: VulnerabilityType;
       repositoryId?: string;
       isResolved?: boolean;
     } = {};
     if (severity) {
-      where.severity = severity.toString().toUpperCase();
+      const severityUpper = severity.toString().toUpperCase() as VulnerabilitySeverity;
+      if (Object.values(VulnerabilitySeverity).includes(severityUpper)) {
+        where.severity = severityUpper;
+      }
     }
     if (type) {
-      where.type = type.toString().toUpperCase();
+      const typeUpper = type.toString().toUpperCase() as VulnerabilityType;
+      if (Object.values(VulnerabilityType).includes(typeUpper)) {
+        where.type = typeUpper;
+      }
     }
     if (repoId) {
       where.repositoryId = repoId.toString();
