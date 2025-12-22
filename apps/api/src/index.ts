@@ -417,6 +417,292 @@ app.post('/api/repos/:owner/:repo/create-fix-pr', async (req, res) => {
   }
 });
 
+// ============================================
+// VULNERABILITIES API
+// ============================================
+
+// Get all vulnerabilities (with filters)
+app.get('/api/vulnerabilities', async (req, res) => {
+  try {
+    const { severity, type, repoId, resolved } = req.query;
+    interface SessionData {
+      githubToken?: string;
+    }
+    const token = (req.session as SessionData)?.githubToken || process.env.GITHUB_TOKEN;
+
+    // Mock vulnerabilities for demo
+    const mockVulnerabilities: Finding[] = [
+      {
+        id: '1',
+        type: 'SQL_INJECTION',
+        severity: 'critical',
+        line: 42,
+        file: 'api/users.ts',
+        description: 'SQL injection vulnerability in user query. User input is directly concatenated into SQL query.',
+        fix: 'Use parameterized queries or prepared statements',
+        language: 'TypeScript',
+      },
+      {
+        id: '2',
+        type: 'XSS',
+        severity: 'high',
+        line: 128,
+        file: 'components/Form.tsx',
+        description: 'Cross-site scripting vulnerability. User input is rendered without sanitization.',
+        fix: 'Sanitize user input or use React\'s built-in XSS protection',
+        language: 'TypeScript',
+      },
+      {
+        id: '3',
+        type: 'SECRET_LEAK',
+        severity: 'critical',
+        line: 15,
+        file: 'config/db.ts',
+        description: 'Hardcoded database password found in source code.',
+        fix: 'Move secrets to environment variables or secret management service',
+        language: 'TypeScript',
+      },
+      {
+        id: '4',
+        type: 'CSRF',
+        severity: 'medium',
+        line: 89,
+        file: 'routes/auth.ts',
+        description: 'Missing CSRF protection on state-changing operations.',
+        fix: 'Implement CSRF tokens for all POST/PUT/DELETE requests',
+        language: 'TypeScript',
+      },
+      {
+        id: '5',
+        type: 'PATH_TRAVERSAL',
+        severity: 'high',
+        line: 56,
+        file: 'utils/file.ts',
+        description: 'Path traversal vulnerability. User input used in file path without validation.',
+        fix: 'Validate and sanitize file paths, use path.join() and restrict to allowed directories',
+        language: 'TypeScript',
+      },
+    ];
+
+    let filtered = [...mockVulnerabilities];
+
+    if (severity) {
+      filtered = filtered.filter((v) => v.severity === severity);
+    }
+    if (type) {
+      filtered = filtered.filter((v) => v.type === type);
+    }
+    if (resolved === 'false' || resolved === 'true') {
+      // In real implementation, check isResolved field
+    }
+
+    res.json({
+      success: true,
+      data: filtered,
+      demoMode: !token && !process.env.GITHUB_TOKEN,
+    } as ApiResponse<Finding[]>);
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Failed to fetch vulnerabilities';
+    res.status(500).json({
+      success: false,
+      error: errorMessage,
+    } as ApiResponse<null>);
+  }
+});
+
+// Get vulnerability by ID
+app.get('/api/vulnerabilities/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    // Mock single vulnerability
+    const vulnerability: Finding = {
+      id,
+      type: 'SQL_INJECTION',
+      severity: 'critical',
+      line: 42,
+      file: 'api/users.ts',
+      description: 'SQL injection vulnerability in user query. User input is directly concatenated into SQL query.',
+      fix: 'Use parameterized queries or prepared statements',
+      language: 'TypeScript',
+    };
+
+    res.json({
+      success: true,
+      data: vulnerability,
+    } as ApiResponse<Finding>);
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Failed to fetch vulnerability';
+    res.status(500).json({
+      success: false,
+      error: errorMessage,
+    } as ApiResponse<null>);
+  }
+});
+
+// ============================================
+// PULL REQUESTS API
+// ============================================
+
+// Get all fix PRs
+app.get('/api/pull-requests', async (req, res) => {
+  try {
+    const { status, repoId } = req.query;
+    interface SessionData {
+      githubToken?: string;
+    }
+    const token = (req.session as SessionData)?.githubToken || process.env.GITHUB_TOKEN;
+
+    // Mock PRs for demo
+    const mockPRs = [
+      {
+        id: '1',
+        repositoryId: '1',
+        repositoryName: 'api-gateway',
+        prUrl: 'https://github.com/stephdl/api-gateway/pull/123',
+        branchName: 'fix/sql-injection-users',
+        prNumber: 123,
+        title: 'Fix SQL injection vulnerability in user query',
+        description: 'Replaced string concatenation with parameterized queries to prevent SQL injection attacks.',
+        commitMessage: 'fix: use parameterized queries in user endpoint',
+        commitSha: 'abc123def456',
+        status: 'open',
+        createdAt: new Date(Date.now() - 86400000).toISOString(),
+        mergedAt: null,
+        rejectedAt: null,
+        vulnerabilitiesFixed: ['1'],
+      },
+      {
+        id: '2',
+        repositoryId: '2',
+        repositoryName: 'auth-service',
+        prUrl: 'https://github.com/stephdl/auth-service/pull/45',
+        branchName: 'fix/xss-form-component',
+        prNumber: 45,
+        title: 'Fix XSS vulnerability in form component',
+        description: 'Added input sanitization to prevent cross-site scripting attacks.',
+        commitMessage: 'fix: sanitize user input in form component',
+        commitSha: 'def456ghi789',
+        status: 'merged',
+        createdAt: new Date(Date.now() - 172800000).toISOString(),
+        mergedAt: new Date(Date.now() - 86400000).toISOString(),
+        rejectedAt: null,
+        vulnerabilitiesFixed: ['2'],
+      },
+      {
+        id: '3',
+        repositoryId: '3',
+        repositoryName: 'frontend-app',
+        prUrl: 'https://github.com/stephdl/frontend-app/pull/78',
+        branchName: 'fix/secret-leak-config',
+        prNumber: 78,
+        title: 'Move hardcoded secrets to environment variables',
+        description: 'Removed hardcoded database password and moved to environment variables.',
+        commitMessage: 'fix: move secrets to env variables',
+        commitSha: 'ghi789jkl012',
+        status: 'open',
+        createdAt: new Date(Date.now() - 3600000).toISOString(),
+        mergedAt: null,
+        rejectedAt: null,
+        vulnerabilitiesFixed: ['3'],
+      },
+    ];
+
+    let filtered = [...mockPRs];
+
+    if (status) {
+      filtered = filtered.filter((pr) => pr.status === status);
+    }
+    if (repoId) {
+      filtered = filtered.filter((pr) => pr.repositoryId === repoId);
+    }
+
+    res.json({
+      success: true,
+      data: filtered,
+      demoMode: !token && !process.env.GITHUB_TOKEN,
+    } as ApiResponse<typeof mockPRs>);
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Failed to fetch pull requests';
+    res.status(500).json({
+      success: false,
+      error: errorMessage,
+    } as ApiResponse<null>);
+  }
+});
+
+// ============================================
+// SECURITY SCORES API
+// ============================================
+
+// Get security scores
+app.get('/api/security-scores', async (req, res) => {
+  try {
+    const { orgId, repoId } = req.query;
+    interface SessionData {
+      githubToken?: string;
+    }
+    const token = (req.session as SessionData)?.githubToken || process.env.GITHUB_TOKEN;
+
+    // Mock security scores
+    const mockScores = repoId
+      ? {
+          repositoryId: repoId,
+          repositoryName: 'api-gateway',
+          score: 82,
+          breakdown: {
+            baseScore: 100,
+            critical: -15,
+            high: -3,
+            medium: 0,
+            low: 0,
+          },
+          trend: [
+            { date: '2024-01-01', score: 75 },
+            { date: '2024-01-15', score: 78 },
+            { date: '2024-02-01', score: 80 },
+            { date: '2024-02-15', score: 82 },
+          ],
+          topRisks: [
+            { type: 'SQL_INJECTION', count: 2, severity: 'critical' },
+            { type: 'XSS', count: 1, severity: 'high' },
+          ],
+        }
+      : {
+          organizationId: orgId || 'stephdl',
+          organizationName: 'stephdl',
+          overallScore: 78,
+          repositoryScores: [
+            { id: '1', name: 'api-gateway', score: 82, trend: 'up' },
+            { id: '2', name: 'auth-service', score: 85, trend: 'up' },
+            { id: '3', name: 'frontend-app', score: 75, trend: 'down' },
+            { id: '4', name: 'ns8-lamp', score: 70, trend: 'stable' },
+            { id: '5', name: 'database-migrations', score: 90, trend: 'up' },
+            { id: '6', name: 'monitoring-dashboard', score: 88, trend: 'up' },
+          ],
+          summary: {
+            totalRepos: 6,
+            totalVulnerabilities: 47,
+            critical: 12,
+            high: 15,
+            medium: 12,
+            low: 8,
+          },
+        };
+
+    res.json({
+      success: true,
+      data: mockScores,
+      demoMode: !token && !process.env.GITHUB_TOKEN,
+    } as ApiResponse<typeof mockScores>);
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Failed to fetch security scores';
+    res.status(500).json({
+      success: false,
+      error: errorMessage,
+    } as ApiResponse<null>);
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`🚀 API server running on http://localhost:${PORT}`);
   console.log(`📊 Health check: http://localhost:${PORT}/api/health`);

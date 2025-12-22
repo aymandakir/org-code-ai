@@ -117,3 +117,162 @@ export async function createFixPR(
   return response.data;
 }
 
+// ============================================
+// VULNERABILITIES API
+// ============================================
+
+export interface VulnerabilityFilters {
+  severity?: 'critical' | 'high' | 'medium' | 'low' | 'info';
+  type?: string;
+  repoId?: string;
+  resolved?: boolean;
+}
+
+export async function fetchVulnerabilities(
+  filters?: VulnerabilityFilters
+): Promise<{ vulnerabilities: Finding[]; demoMode: boolean }> {
+  const params = new URLSearchParams();
+  if (filters?.severity) params.append('severity', filters.severity);
+  if (filters?.type) params.append('type', filters.type);
+  if (filters?.repoId) params.append('repoId', filters.repoId);
+  if (filters?.resolved !== undefined) params.append('resolved', String(filters.resolved));
+
+  const query = params.toString();
+  const response = await fetchApi<Finding[]>(`/api/vulnerabilities${query ? `?${query}` : ''}`);
+  
+  if (!response.success || !response.data) {
+    if (response.demoMode) {
+      return { vulnerabilities: [], demoMode: true };
+    }
+    throw new Error(response.error || 'Failed to fetch vulnerabilities');
+  }
+  
+  return {
+    vulnerabilities: response.data,
+    demoMode: response.demoMode || false,
+  };
+}
+
+export async function fetchVulnerability(id: string): Promise<Finding> {
+  const response = await fetchApi<Finding>(`/api/vulnerabilities/${id}`);
+  if (!response.success || !response.data) {
+    throw new Error(response.error || 'Failed to fetch vulnerability');
+  }
+  return response.data;
+}
+
+// ============================================
+// PULL REQUESTS API
+// ============================================
+
+export interface PullRequest {
+  id: string;
+  repositoryId: string;
+  repositoryName: string;
+  prUrl: string;
+  branchName: string;
+  prNumber: number | null;
+  title: string;
+  description: string;
+  commitMessage: string;
+  commitSha: string | null;
+  status: 'open' | 'merged' | 'closed' | 'rejected';
+  createdAt: string;
+  mergedAt: string | null;
+  rejectedAt: string | null;
+  vulnerabilitiesFixed: string[];
+}
+
+export interface PRFilters {
+  status?: 'open' | 'merged' | 'closed' | 'rejected';
+  repoId?: string;
+}
+
+export async function fetchPullRequests(
+  filters?: PRFilters
+): Promise<{ prs: PullRequest[]; demoMode: boolean }> {
+  const params = new URLSearchParams();
+  if (filters?.status) params.append('status', filters.status);
+  if (filters?.repoId) params.append('repoId', filters.repoId);
+
+  const query = params.toString();
+  const response = await fetchApi<PullRequest[]>(`/api/pull-requests${query ? `?${query}` : ''}`);
+  
+  if (!response.success || !response.data) {
+    if (response.demoMode) {
+      return { prs: [], demoMode: true };
+    }
+    throw new Error(response.error || 'Failed to fetch pull requests');
+  }
+  
+  return {
+    prs: response.data,
+    demoMode: response.demoMode || false,
+  };
+}
+
+// ============================================
+// SECURITY SCORES API
+// ============================================
+
+export interface SecurityScore {
+  repositoryId?: string;
+  repositoryName?: string;
+  organizationId?: string;
+  organizationName?: string;
+  score: number;
+  breakdown?: {
+    baseScore: number;
+    critical: number;
+    high: number;
+    medium: number;
+    low: number;
+  };
+  trend?: Array<{ date: string; score: number }>;
+  topRisks?: Array<{ type: string; count: number; severity: string }>;
+  overallScore?: number;
+  repositoryScores?: Array<{ id: string; name: string; score: number; trend: 'up' | 'down' | 'stable' }>;
+  summary?: {
+    totalRepos: number;
+    totalVulnerabilities: number;
+    critical: number;
+    high: number;
+    medium: number;
+    low: number;
+  };
+}
+
+export interface SecurityScoreFilters {
+  orgId?: string;
+  repoId?: string;
+}
+
+export async function fetchSecurityScores(
+  filters?: SecurityScoreFilters
+): Promise<{ score: SecurityScore; demoMode: boolean }> {
+  const params = new URLSearchParams();
+  if (filters?.orgId) params.append('orgId', filters.orgId);
+  if (filters?.repoId) params.append('repoId', filters.repoId);
+
+  const query = params.toString();
+  const response = await fetchApi<SecurityScore>(`/api/security-scores${query ? `?${query}` : ''}`);
+  
+  if (!response.success || !response.data) {
+    if (response.demoMode) {
+      return {
+        score: {
+          score: 0,
+          overallScore: 0,
+        },
+        demoMode: true,
+      };
+    }
+    throw new Error(response.error || 'Failed to fetch security scores');
+  }
+  
+  return {
+    score: response.data,
+    demoMode: response.demoMode || false,
+  };
+}
+
