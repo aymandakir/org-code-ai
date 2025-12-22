@@ -29,29 +29,33 @@ export interface ScanRepoJob {
   token?: string;
 }
 
-// Organization scan queue
-export const scanOrgQueue = new Queue<ScanOrgJob>('scan-org', {
-  connection: connection || undefined,
-  defaultJobOptions: {
-    attempts: 3,
-    backoff: {
-      type: 'exponential',
-      delay: 2000,
-    },
-  },
-});
+// Organization scan queue (only create if Redis is available)
+export const scanOrgQueue = connection
+  ? new Queue<ScanOrgJob>('scan-org', {
+      connection,
+      defaultJobOptions: {
+        attempts: 3,
+        backoff: {
+          type: 'exponential',
+          delay: 2000,
+        },
+      },
+    })
+  : null;
 
-// Repository scan queue
-export const scanRepoQueue = new Queue<ScanRepoJob>('scan-repo', {
-  connection: connection || undefined,
-  defaultJobOptions: {
-    attempts: 3,
-    backoff: {
-      type: 'exponential',
-      delay: 2000,
-    },
-  },
-});
+// Repository scan queue (only create if Redis is available)
+export const scanRepoQueue = connection
+  ? new Queue<ScanRepoJob>('scan-repo', {
+      connection,
+      defaultJobOptions: {
+        attempts: 3,
+        backoff: {
+          type: 'exponential',
+          delay: 2000,
+        },
+      },
+    })
+  : null;
 
 // Worker function for organization scans
 async function processOrgScan(job: { data: ScanOrgJob; updateProgress: (progress: number) => Promise<void> }) {
@@ -117,7 +121,7 @@ async function processOrgScan(job: { data: ScanOrgJob; updateProgress: (progress
 }
 
 // Worker function for repository scans
-async function processRepoScan(job: { data: ScanRepoJob; updateProgress: (progress: number) => Promise<void> }) {
+async function processRepoScan(job: { data: ScanRepoJob; updateProgress?: (progress: number) => Promise<void> }) {
   const { owner, repoName, token } = job.data;
   const scanner = new GitHubScanner(token);
   const analyzer = new VulnerabilityAnalyzer();
@@ -193,7 +197,9 @@ async function processRepoScan(job: { data: ScanRepoJob; updateProgress: (progre
         });
 
         // Update job progress
-        await job.updateProgress((filesScanned / filesToAnalyze.length) * 100);
+        if (job.updateProgress) {
+          await job.updateProgress((filesScanned / filesToAnalyze.length) * 100);
+        }
       } catch (error) {
         console.error(`Error analyzing ${file.path}:`, error);
       }

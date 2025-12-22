@@ -127,6 +127,12 @@ app.post('/api/orgs/:orgName/scan', async (req, res) => {
 
     // Add job to queue
     const { scanOrgQueue } = await import('./queue/scan-queue');
+    if (!scanOrgQueue) {
+      return res.status(503).json({
+        success: false,
+        error: 'Job queue not available. Redis required for background scanning.',
+      } as ApiResponse<null>);
+    }
     const job = await scanOrgQueue.add('scan-org', {
       orgName,
       token,
