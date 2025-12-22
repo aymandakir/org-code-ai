@@ -33,8 +33,9 @@ export default function RepoScanPage() {
       const data = await fetchRepoScan(owner, repo);
       setFiles(data.files);
       setLanguages(data.languages);
-    } catch (err: any) {
-      setError(err.message || 'Failed to load repository data');
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load repository data';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }

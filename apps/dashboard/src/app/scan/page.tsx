@@ -31,8 +31,9 @@ export default function ScanPage() {
       const result = await fetchOrgRepos(orgName.trim());
       setRepos(result.repos);
       setDemoMode(result.demoMode);
-    } catch (err: any) {
-      setError(err.message || 'Failed to fetch repositories');
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch repositories. Please try again or connect your GitHub App.';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }

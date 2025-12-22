@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -32,8 +32,9 @@ export default function AnalyzePage() {
       setFindings(result.findings);
       setScanned(result.scanned);
       setTotalFiles(result.totalFiles);
-    } catch (err: any) {
-      setError(err.message || 'Failed to analyze repository');
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to analyze repository';
+      setError(errorMessage);
       console.error(err);
     } finally {
       setLoading(false);
@@ -51,8 +52,9 @@ export default function AnalyzePage() {
       if (result.pr?.html_url) {
         setPrUrl(result.pr.html_url);
       }
-    } catch (err: any) {
-      setError(err.message || 'Failed to create PR');
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to create PR';
+      setError(errorMessage);
       console.error(err);
     } finally {
       setLoading(false);

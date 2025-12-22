@@ -24,9 +24,9 @@ async function fetchApi<T>(
     }
 
     return await response.json();
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('API request error:', error);
-    throw error;
+    throw error instanceof Error ? error : new Error('API request failed');
   }
 }
 
