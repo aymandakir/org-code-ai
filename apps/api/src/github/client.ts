@@ -195,7 +195,7 @@ export class GitHubClient {
     ];
   }
 
-  private getMockRepoFiles(owner: string, repo: string): RepoFile[] {
+  private getMockRepoFiles(_owner: string, _repo: string): RepoFile[] {
     return [
       { name: 'src', path: 'src', type: 'dir' },
       { name: 'index.ts', path: 'src/index.ts', type: 'file', size: 1024 },

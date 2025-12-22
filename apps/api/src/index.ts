@@ -347,7 +347,8 @@ app.post('/api/repos/:owner/:repo/create-fix-pr', async (req, res) => {
 
     // Create PR via GitHub API
     try {
-      const octokit = new Octokit({ auth: token });
+      // const octokit = new Octokit({ auth: token });
+      // TODO: Use octokit to create actual PR in production
 
       // Note: In production, you'd need to:
       // 1. Create a branch
