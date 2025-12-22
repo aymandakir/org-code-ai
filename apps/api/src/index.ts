@@ -3,7 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import session from 'express-session';
 import cookieParser from 'cookie-parser';
-import { Octokit } from '@octokit/rest';
+// import { Octokit } from '@octokit/rest'; // TODO: Use for actual PR creation
 import { GitHubClient } from './github/client';
 import {
   scanCodeForVulnerabilities,
