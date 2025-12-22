@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { fetchRepoAnalysis, createFixPR } from '@/lib/api';
-import type { Finding } from '@org-code-ai/types';
+import type { Finding } from '@/types';
 import { ArrowLeft, Sparkles, AlertTriangle, CheckCircle, Loader2, ExternalLink } from 'lucide-react';
 
 export default function AnalyzePage() {

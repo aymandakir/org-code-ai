@@ -1,4 +1,4 @@
-import type { Repo, RepoFile, ApiResponse, Finding } from '@org-code-ai/types';
+import type { Repo, RepoFile, ApiResponse, Finding } from '@/types';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 

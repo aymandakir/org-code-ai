@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { fetchOrgRepos } from '@/lib/api';
-import type { Repo } from '@org-code-ai/types';
+import type { Repo } from '@/types';
 import { Search, Github, Star, GitFork, Calendar, AlertCircle } from 'lucide-react';
 
 export default function ScanPage() {

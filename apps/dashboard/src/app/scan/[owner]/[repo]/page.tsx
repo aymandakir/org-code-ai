@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { fetchRepoScan } from '@/lib/api';
-import type { RepoFile } from '@org-code-ai/types';
+import type { RepoFile } from '@/types';
 import { ArrowLeft, File, Folder, Code, AlertCircle, Sparkles } from 'lucide-react';
 
 export default function RepoScanPage() {

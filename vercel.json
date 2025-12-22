@@ -1,7 +1,8 @@
 {
   "version": 2,
-  "buildCommand": "npm install && cd apps/dashboard && npm install --legacy-peer-deps && npm run build -- --webpack",
+  "buildCommand": "cd apps/dashboard && npm install && npm run build -- --webpack",
   "outputDirectory": "apps/dashboard/.next",
-  "installCommand": "npm install",
-  "framework": "nextjs"
+  "installCommand": "cd apps/dashboard && npm install",
+  "framework": "nextjs",
+  "rootDirectory": "apps/dashboard"
 }
