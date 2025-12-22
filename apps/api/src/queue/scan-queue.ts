@@ -61,6 +61,11 @@ export const scanRepoQueue = connection
 async function processOrgScan(job: { data: ScanOrgJob; updateProgress: (progress: number) => Promise<void> }) {
   const { orgName, token } = job.data;
   const scanner = new GitHubScanner(token);
+  const { VulnerabilityAnalyzer } = await import('../services/vulnerability-analyzer');
+  const analyzer = new VulnerabilityAnalyzer();
+
+  // Emit start event
+  emitOrgEvent('org:scan:started', { orgName }, undefined);
 
   // Create scan record
   let org = await prisma.organization.findUnique({
@@ -90,24 +95,84 @@ async function processOrgScan(job: { data: ScanOrgJob; updateProgress: (progress
     // Scan organization
     const result = await scanner.scanOrganization(orgName, { token, storeInDb: true });
 
+    await job.updateProgress(20);
+    emitOrgEvent('org:scan:progress', {
+      current: 1,
+      total: result.totalRepos + 1,
+      step: 'Organization scanned',
+    }, org.id);
+
+    // Analyze each repository
+    let analyzed = 0;
+    for (const repo of result.repos) {
+      const [owner, repoName] = repo.name.includes('/') ? repo.name.split('/') : [orgName, repo.name];
+
+      try {
+        // Find repo in DB
+        const dbRepo = await prisma.repository.findUnique({
+          where: { fullName: `${owner}/${repoName}` },
+        });
+
+        if (dbRepo) {
+          // Get files and analyze
+          const files = await scanner.getRepositoryFiles(owner, repoName, '', { token });
+          
+          for (const file of files.slice(0, 10)) {
+            // Limit to 10 files per repo for performance
+            try {
+              const content = await scanner.getFileContent(owner, repoName, file.path, { token });
+              if (content) {
+                const language = file.name.split('.').pop() || 'javascript';
+                await analyzer.analyzeFile({
+                  filePath: file.path,
+                  fileContent: content,
+                  language,
+                  repositoryId: dbRepo.id,
+                  scanId: scan.id,
+                });
+              }
+            } catch (error) {
+              console.error(`Error analyzing ${file.path}:`, error);
+            }
+          }
+
+          // Calculate security score
+          await analyzer.calculateSecurityScore(dbRepo.id);
+        }
+
+        analyzed++;
+
+        const progress = 20 + Math.round((analyzed / result.totalRepos) * 80);
+        await job.updateProgress(progress);
+
+        emitOrgEvent('org:scan:progress', {
+          current: analyzed + 1,
+          total: result.totalRepos + 1,
+          step: `Analyzed ${repoName}`,
+        }, org.id);
+      } catch (error) {
+        console.error(`Error analyzing ${repoName}:`, error);
+      }
+    }
+
     // Update scan
     await prisma.scan.update({
       where: { id: scan.id },
       data: {
         status: 'COMPLETED',
         completedAt: new Date(),
-        totalFiles: 0, // Will be updated as repos are scanned
+        totalFiles: 0,
       },
     });
 
     // Emit WebSocket event
     emitOrgEvent('org:scan:completed', {
-      orgId: org.id,
-      scanId: scan.id,
+      orgName,
       reposScanned: result.totalRepos,
+      reposAnalyzed: analyzed,
     }, org.id);
 
-    return { scanId: scan.id, reposScanned: result.totalRepos };
+    return { scanId: scan.id, reposScanned: result.totalRepos, reposAnalyzed: analyzed };
   } catch (error) {
     await prisma.scan.update({
       where: { id: scan.id },

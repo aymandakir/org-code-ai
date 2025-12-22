@@ -222,5 +222,70 @@ export class GitHubScanner {
 
     return await response.text();
   }
+
+  /**
+   * Get all repository files recursively (for analysis)
+   */
+  async getRepositoryFiles(
+    owner: string,
+    repoName: string,
+    path: string = '',
+    options: ScanOptions = {}
+  ): Promise<Array<{ path: string; name: string; url: string; size: number }>> {
+    const token = options.token || this.token || process.env.GITHUB_TOKEN;
+
+    if (!token) {
+      throw new Error('GitHub token required');
+    }
+
+    try {
+      const response = await fetch(
+        `https://api.github.com/repos/${owner}/${repoName}/contents/${path}`,
+        {
+          headers: {
+            Authorization: `token ${token}`,
+            Accept: 'application/vnd.github.v3+json',
+          },
+        }
+      );
+
+      if (!response.ok) {
+        if (response.status === 404) {
+          return [];
+        }
+        throw new Error(`Failed to fetch contents: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      const files: Array<{ path: string; name: string; url: string; size: number }> = [];
+
+      for (const item of Array.isArray(data) ? data : [data]) {
+        if (item.type === 'file') {
+          // Only analyze code files
+          const codeExtensions = ['.js', '.ts', '.tsx', '.jsx', '.py', '.php', '.java', '.rb', '.go', '.rs', '.cs', '.cpp', '.c'];
+          if (codeExtensions.some((ext) => item.name.endsWith(ext))) {
+            files.push({
+              path: item.path,
+              name: item.name,
+              url: item.download_url || '',
+              size: item.size || 0,
+            });
+          }
+        } else if (item.type === 'dir' && !item.name.startsWith('.') && item.name !== 'node_modules' && item.name !== 'vendor') {
+          // Recursively get files from subdirectories (limit depth)
+          if (path.split('/').length < 5) {
+            // Limit recursion depth
+            const subFiles = await this.getRepositoryFiles(owner, repoName, item.path, options);
+            files.push(...subFiles);
+          }
+        }
+      }
+
+      return files;
+    } catch (error) {
+      console.error(`Error fetching repository files for ${path}:`, error);
+      return [];
+    }
+  }
 }
 

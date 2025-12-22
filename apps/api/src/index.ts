@@ -3,6 +3,8 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import session from 'express-session';
 import cookieParser from 'cookie-parser';
+import { createServer } from 'http';
+import { initializeWebSocket } from './websocket';
 import { GitHubClient } from './github/client';
 import {
   scanCodeForVulnerabilities,
@@ -19,11 +21,17 @@ import { PRGenerator } from './services/pr-generator';
 import dashboardRoutes from './routes/dashboard';
 import metricsRoutes from './routes/metrics';
 import repositoryRoutes from './routes/repositories';
+import scanRoutes from './routes/scan';
+import analyzeRoutes from './routes/analyze';
+import fixRoutes from './routes/fix';
 
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+
+// Create HTTP server for WebSocket support
+const httpServer = createServer(app);
 
 // CORS configuration
 app.use(
@@ -40,6 +48,9 @@ app.use(express.json());
 app.use('/api', dashboardRoutes);
 app.use('/api', metricsRoutes);
 app.use('/api', repositoryRoutes);
+app.use('/api', scanRoutes);
+app.use('/api', analyzeRoutes);
+app.use('/api', fixRoutes);
 
 // Session configuration
 app.use(
@@ -1076,7 +1087,15 @@ app.get('/api/security-scores', async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
+// Initialize WebSocket
+try {
+  initializeWebSocket(httpServer);
+  console.log('✅ WebSocket server initialized');
+} catch (error) {
+  console.warn('⚠️  WebSocket initialization failed (continuing without it):', error);
+}
+
+httpServer.listen(PORT, () => {
   console.log(`🚀 API server running on http://localhost:${PORT}`);
   console.log(`📊 Health check: http://localhost:${PORT}/api/health`);
   if (!process.env.GITHUB_CLIENT_ID) {

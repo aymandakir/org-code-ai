@@ -6,26 +6,29 @@ let io: SocketIOServer | null = null;
 export function initializeWebSocket(server: HTTPServer) {
   io = new SocketIOServer(server, {
     cors: {
-      origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
+      origin: process.env.CORS_ORIGIN || process.env.FRONTEND_URL || 'http://localhost:3000',
       methods: ['GET', 'POST'],
+      credentials: true,
     },
   });
 
   io.on('connection', (socket) => {
-    console.log(`Client connected: ${socket.id}`);
+    console.log(`✅ Client connected: ${socket.id}`);
 
     socket.on('disconnect', () => {
-      console.log(`Client disconnected: ${socket.id}`);
+      console.log(`❌ Client disconnected: ${socket.id}`);
     });
 
     // Join scan room
     socket.on('join:scan', (scanId: string) => {
       socket.join(`scan:${scanId}`);
+      console.log(`Client ${socket.id} joined scan:${scanId}`);
     });
 
     // Join org room
     socket.on('join:org', (orgId: string) => {
       socket.join(`org:${orgId}`);
+      console.log(`Client ${socket.id} joined org:${orgId}`);
     });
   });
 

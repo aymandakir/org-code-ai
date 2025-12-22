@@ -211,9 +211,23 @@ export default function VulnerabilitiesPage() {
                       variant="outline"
                       size="sm"
                       className="flex-shrink-0"
-                      onClick={() => {
-                        // Navigate to create fix PR
-                        window.location.href = `/prs?create=${vuln.id}`;
+                      onClick={async () => {
+                        if (!vuln.id) return;
+                        try {
+                          const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+                          const res = await fetch(`${API_BASE_URL}/api/vulnerabilities/${vuln.id}/fix`, {
+                            method: 'POST',
+                            credentials: 'include',
+                          });
+                          const data = await res.json();
+                          if (data.success && data.data?.pr?.url) {
+                            window.open(data.data.pr.url, '_blank');
+                          } else {
+                            alert(data.error || 'Failed to create PR');
+                          }
+                        } catch (err) {
+                          alert(err instanceof Error ? err.message : 'Failed to create PR');
+                        }
                       }}
                     >
                       Create Fix PR
