@@ -11,7 +11,10 @@ export function LiveMetricsPreview() {
     vulnerabilities?: { total: number; critical: number };
   } | null>(null);
   const [debt, setDebt] = useState<{
-    ageAdjustedDebt?: number;
+    totalDebt: number;
+    ageAdjustedDebt: number;
+    currency: string;
+    interpretation: string;
   } | null>(null);
   const [loading, setLoading] = useState(true);
 

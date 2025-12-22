@@ -1,5 +1,6 @@
 'use client';
 
+import { useMemo } from 'react';
 import Link from 'next/link';
 import { Code, Star, GitFork, AlertCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,9 +12,26 @@ interface RepositoryCardProps {
 }
 
 export function RepositoryCard({ repo }: RepositoryCardProps) {
-  // Mock security score for demo
-  const securityScore = Math.floor(Math.random() * 30) + 70; // 70-100
-  const vulnCount = Math.floor(Math.random() * 10);
+  // Mock security score for demo - generate deterministic values based on repo ID
+  const securityScore = useMemo(() => {
+    // Use repo ID to generate a stable pseudo-random number (70-100)
+    let hash = 0;
+    for (let i = 0; i < repo.id.length; i++) {
+      hash = ((hash << 5) - hash) + repo.id.charCodeAt(i);
+      hash = hash & hash; // Convert to 32-bit integer
+    }
+    return Math.abs(hash % 31) + 70; // 70-100
+  }, [repo.id]);
+  
+  const vulnCount = useMemo(() => {
+    // Use repo name to generate a stable pseudo-random number (0-9)
+    let hash = 0;
+    for (let i = 0; i < repo.name.length; i++) {
+      hash = ((hash << 5) - hash) + repo.name.charCodeAt(i);
+      hash = hash & hash;
+    }
+    return Math.abs(hash % 10);
+  }, [repo.name]);
 
   const getScoreColor = (score: number) => {
     if (score >= 90) return 'text-green-500';

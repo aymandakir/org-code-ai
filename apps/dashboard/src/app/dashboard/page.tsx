@@ -34,11 +34,20 @@ export default function DashboardPage() {
     securityScore?: { current: number; previous: number; change: number; changePercent: number; trend: string; display: string };
   } | null>(null);
   const [metrics, setMetrics] = useState<{
-    mttf?: { overall: number; bySeverity: Record<string, number> };
-    debt?: { ageAdjustedDebt: number };
-    velocity?: { timeline: Array<{ date: string; count: number }> };
-    surface?: { score: number };
-    compliance?: { score: number };
+    mttf?: { overall: number; bySeverity: { critical: number; high: number; medium: number; low: number } };
+    debt?: { totalDebt: number; ageAdjustedDebt: number; currency: string; interpretation: string };
+    velocity?: { 
+      timeline: Array<{ 
+        date: string; 
+        newVulns: number; 
+        fixedVulns: number; 
+        netChange: number; 
+        runningTotal: number; 
+      }>; 
+      trend: 'worsening' | 'improving';
+    };
+    attackSurface?: { score: number; normalized: number; interpretation: string };
+    compliance?: { score: number; passing: boolean; message: string };
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -78,11 +87,11 @@ export default function DashboardPage() {
           complianceData.status === 'fulfilled'
         ) {
           setMetrics({
-            mttf: mttfData.status === 'fulfilled' ? mttfData.value : null,
-            debt: debtData.status === 'fulfilled' ? debtData.value : null,
-            velocity: velocityData.status === 'fulfilled' ? velocityData.value : null,
-            attackSurface: surfaceData.status === 'fulfilled' ? surfaceData.value : null,
-            compliance: complianceData.status === 'fulfilled' ? complianceData.value : null,
+            mttf: mttfData.status === 'fulfilled' ? mttfData.value : undefined,
+            debt: debtData.status === 'fulfilled' ? debtData.value : undefined,
+            velocity: velocityData.status === 'fulfilled' ? velocityData.value : undefined,
+            attackSurface: surfaceData.status === 'fulfilled' ? surfaceData.value : undefined,
+            compliance: complianceData.status === 'fulfilled' ? complianceData.value : undefined,
           });
         }
       } catch (err: unknown) {
@@ -129,10 +138,10 @@ export default function DashboardPage() {
   }
 
   // Fallback to demo data if API unavailable
-  const stats = overview || {
-    repositories: { total: repositories.length, addedThisMonth: 0, change: 'No change' },
-    vulnerabilities: { total: 47, critical: 12, high: 15, medium: 12, low: 8, addedThisMonth: 5, change: '5 new this month' },
-    securityScore: { current: 82, previous: 80, change: 2, changePercent: 2.5, trend: 'up' as const, display: '+2.5%' },
+  const stats = {
+    repositories: overview?.repositories || { total: repositories.length, addedThisMonth: 0, change: 'No change' },
+    vulnerabilities: overview?.vulnerabilities || { total: 47, critical: 12, high: 15, medium: 12, low: 8, addedThisMonth: 5, change: '5 new this month' },
+    securityScore: overview?.securityScore || { current: 82, previous: 80, change: 2, changePercent: 2.5, trend: 'up' as const, display: '+2.5%' },
   };
 
   return (
@@ -336,7 +345,12 @@ export default function DashboardPage() {
             <CardDescription className="text-gray-400">Average hours to resolve vulnerabilities</CardDescription>
           </CardHeader>
           <CardContent>
-            <MTTFChart data={metrics.mttf.bySeverity} />
+            <MTTFChart data={{
+              critical: metrics.mttf.bySeverity.critical ?? 0,
+              high: metrics.mttf.bySeverity.high ?? 0,
+              medium: metrics.mttf.bySeverity.medium ?? 0,
+              low: metrics.mttf.bySeverity.low ?? 0,
+            }} />
           </CardContent>
         </Card>
       )}
