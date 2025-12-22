@@ -12,7 +12,7 @@ import {
   generatePullRequest,
 } from '@org-code-ai/ai-agents';
 import { fetchOrgRepos, fetchRepoFiles } from '@org-code-ai/graphql-client';
-import type { ApiResponse, Finding } from '@org-code-ai/types';
+import type { ApiResponse, Finding, Pattern, RepoFile } from '@org-code-ai/types';
 
 dotenv.config();
 
@@ -88,16 +88,20 @@ app.get('/api/auth/github/callback', async (req, res) => {
     const token = await client.authenticate(code);
 
     // Store token in session
-    (req.session as any).githubToken = token;
+    interface SessionData {
+      githubToken?: string;
+    }
+    (req.session as SessionData).githubToken = token;
 
     // Redirect to dashboard
     const redirectUrl = state && state !== 'default' ? decodeURIComponent(state) : 'http://localhost:3000/scan';
     res.redirect(redirectUrl);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('OAuth callback error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'OAuth authentication failed';
     res.status(500).json({
       success: false,
-      error: error.message || 'OAuth authentication failed',
+      error: errorMessage,
     } as ApiResponse<null>);
   }
 });
@@ -106,7 +110,10 @@ app.get('/api/auth/github/callback', async (req, res) => {
 app.get('/api/orgs/:orgName/repos', async (req, res) => {
   try {
     const { orgName } = req.params;
-    const token = (req.session as any)?.githubToken || process.env.GITHUB_TOKEN;
+    interface SessionData {
+      githubToken?: string;
+    }
+    const token = (req.session as SessionData)?.githubToken || process.env.GITHUB_TOKEN;
 
     const client = new GitHubClient({ token: token || undefined });
     const repos = await client.getOrgRepos(orgName);
@@ -119,11 +126,12 @@ app.get('/api/orgs/:orgName/repos', async (req, res) => {
       demoMode: isDemoMode,
       message: isDemoMode ? 'Using demo data. Connect GitHub App for real scans.' : undefined,
     } as ApiResponse<typeof repos>);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error fetching org repos:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Failed to fetch repositories';
     res.status(500).json({
       success: false,
-      error: error.message || 'Failed to fetch repositories',
+      error: errorMessage,
     } as ApiResponse<null>);
   }
 });
@@ -132,7 +140,10 @@ app.get('/api/orgs/:orgName/repos', async (req, res) => {
 app.get('/api/repos/:owner/:repo/scan', async (req, res) => {
   try {
     const { owner, repo } = req.params;
-    const token = (req.session as any)?.githubToken || process.env.GITHUB_TOKEN;
+    interface SessionData {
+      githubToken?: string;
+    }
+    const token = (req.session as SessionData)?.githubToken || process.env.GITHUB_TOKEN;
 
     const client = new GitHubClient({ token: token || undefined });
     const files = await client.getRepoFiles(owner, repo);
@@ -147,12 +158,13 @@ app.get('/api/repos/:owner/:repo/scan', async (req, res) => {
         languages: Array.from(new Set(files.map(f => f.name.split('.').pop() || '').filter(Boolean))),
       },
       demoMode: isDemoMode,
-    } as ApiResponse<typeof files>);
-  } catch (error: any) {
+    } as ApiResponse<{ files: RepoFile[]; totalFiles: number; languages: string[] }>);
+  } catch (error: unknown) {
     console.error('Error scanning repo:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Failed to scan repository';
     res.status(500).json({
       success: false,
-      error: error.message || 'Failed to scan repository',
+      error: errorMessage,
     } as ApiResponse<null>);
   }
 });
@@ -166,10 +178,11 @@ app.post('/api/repos/:repoId/scan', async (req, res) => {
       message: 'Use GET /api/repos/:owner/:repo/scan instead',
       repoId,
     } as ApiResponse<null>);
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Failed to scan repository';
     res.status(500).json({
       success: false,
-      error: error.message || 'Failed to scan repository',
+      error: errorMessage,
     } as ApiResponse<null>);
   }
 });
@@ -178,7 +191,10 @@ app.post('/api/repos/:repoId/scan', async (req, res) => {
 app.post('/api/repos/:owner/:repo/analyze', async (req, res) => {
   try {
     const { owner, repo } = req.params;
-    const token = (req.session as any)?.githubToken || process.env.GITHUB_TOKEN;
+    interface SessionData {
+      githubToken?: string;
+    }
+    const token = (req.session as SessionData)?.githubToken || process.env.GITHUB_TOKEN;
 
     if (!process.env.OPENAI_API_KEY) {
       return res.status(400).json({
@@ -210,7 +226,7 @@ app.post('/api/repos/:owner/:repo/analyze', async (req, res) => {
             file.path
           );
           allFindings.push(...findings.map((f) => ({ ...f, file: file.path })));
-        } catch (error: any) {
+        } catch (error: unknown) {
           console.error(`Error scanning ${file.path}:`, error);
           // Continue with other files
         }
@@ -225,11 +241,12 @@ app.post('/api/repos/:owner/:repo/analyze', async (req, res) => {
         totalFiles: files.length,
       },
     } as ApiResponse<{ findings: Finding[]; scanned: number; totalFiles: number }>);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error analyzing repo:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Failed to analyze repository';
     res.status(500).json({
       success: false,
-      error: error.message || 'Failed to analyze repository',
+      error: errorMessage,
     } as ApiResponse<null>);
   }
 });
@@ -238,7 +255,10 @@ app.post('/api/repos/:owner/:repo/analyze', async (req, res) => {
 app.post('/api/orgs/:orgName/analyze-patterns', async (req, res) => {
   try {
     const { orgName } = req.params;
-    const token = (req.session as any)?.githubToken || process.env.GITHUB_TOKEN;
+    interface SessionData {
+      githubToken?: string;
+    }
+    const token = (req.session as SessionData)?.githubToken || process.env.GITHUB_TOKEN;
 
     if (!process.env.OPENAI_API_KEY) {
       return res.status(400).json({
@@ -259,12 +279,13 @@ app.post('/api/orgs/:orgName/analyze-patterns', async (req, res) => {
         patterns,
         reposAnalyzed: repos.length,
       },
-    } as ApiResponse<{ patterns: any[]; reposAnalyzed: number }>);
-  } catch (error: any) {
+    } as ApiResponse<{ patterns: Pattern[]; reposAnalyzed: number }>);
+  } catch (error: unknown) {
     console.error('Error analyzing patterns:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Failed to analyze patterns';
     res.status(500).json({
       success: false,
-      error: error.message || 'Failed to analyze patterns',
+      error: errorMessage,
     } as ApiResponse<null>);
   }
 });
@@ -274,7 +295,10 @@ app.post('/api/repos/:owner/:repo/create-fix-pr', async (req, res) => {
   try {
     const { owner, repo } = req.params;
     const { findings } = req.body as { findings: Finding[] };
-    const token = (req.session as any)?.githubToken || process.env.GITHUB_TOKEN;
+    interface SessionData {
+      githubToken?: string;
+    }
+    const token = (req.session as SessionData)?.githubToken || process.env.GITHUB_TOKEN;
 
     if (!token) {
       return res.status(401).json({
@@ -312,7 +336,7 @@ app.post('/api/repos/:owner/:repo/create-fix-pr', async (req, res) => {
         try {
           const fixedCode = await generateFix(fileFindings[0], originalCode, language);
           fixes[filePath] = fixedCode;
-        } catch (error: any) {
+        } catch (error: unknown) {
           console.error(`Error generating fix for ${filePath}:`, error);
         }
       }
@@ -345,8 +369,18 @@ app.post('/api/repos/:owner/:repo/create-fix-pr', async (req, res) => {
           fixes: Object.keys(fixes).length,
           message: 'PR content generated. In production, this would create an actual PR.',
         },
-      } as ApiResponse<any>);
-    } catch (error: any) {
+      } as ApiResponse<{
+        pr: {
+          title: string;
+          body: string;
+          commit_message: string;
+          html_url: string;
+          number: number;
+        };
+        fixes: number;
+        message: string;
+      }>);
+    } catch (error: unknown) {
       console.error('Error creating PR:', error);
       // Return PR content even if PR creation fails
       res.json({
@@ -361,13 +395,23 @@ app.post('/api/repos/:owner/:repo/create-fix-pr', async (req, res) => {
           fixes: Object.keys(fixes).length,
           message: 'PR content generated but PR creation failed. Check GitHub token permissions.',
         },
-      } as ApiResponse<any>);
+      } as ApiResponse<{
+        pr: {
+          title: string;
+          body: string;
+          commit_message: string;
+          html_url: null;
+        };
+        fixes: number;
+        message: string;
+      }>);
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error creating fix PR:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Failed to create fix PR';
     res.status(500).json({
       success: false,
-      error: error.message || 'Failed to create fix PR',
+      error: errorMessage,
     } as ApiResponse<null>);
   }
 });

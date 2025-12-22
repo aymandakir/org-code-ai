@@ -6,14 +6,14 @@ export interface GitHubClientConfig {
 }
 
 export class GitHubGraphQLClient {
-  private client: ReturnType<typeof graphql>;
+  private client: (query: string, variables?: Record<string, unknown>) => Promise<unknown>;
 
   constructor(config: GitHubClientConfig) {
     this.client = graphql.defaults({
       headers: {
         authorization: `token ${config.token}`,
       },
-    });
+    }) as (query: string, variables?: Record<string, unknown>) => Promise<unknown>;
   }
 
   async fetchOrgRepos(orgLogin: string): Promise<Repo[]> {
@@ -56,16 +56,35 @@ export class GitHubGraphQLClient {
       let hasNextPage = true;
 
       while (hasNextPage) {
-        const result: any = await this.client(query, {
+        const result = (await this.client(query, {
           orgLogin,
           cursor,
-        });
+        })) as {
+          organization?: {
+            repositories: {
+              nodes: Array<{
+                id: string;
+                name: string;
+                url: string;
+                description: string | null;
+                primaryLanguage: { name: string } | null;
+                stargazerCount: number;
+                forkCount: number;
+                updatedAt: string;
+              }>;
+              pageInfo: {
+                hasNextPage: boolean;
+                endCursor: string | null;
+              };
+            };
+          };
+        };
 
         if (!result.organization) {
           throw new Error(`Organization '${orgLogin}' not found`);
         }
 
-        const repos = result.organization.repositories.nodes.map((repo: any) => ({
+        const repos = result.organization.repositories.nodes.map((repo) => ({
           id: repo.id,
           name: repo.name,
           url: repo.url,
@@ -83,11 +102,10 @@ export class GitHubGraphQLClient {
       }
 
       return allRepos;
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error fetching org repos:', error);
-      throw new Error(
-        error.message || `Failed to fetch repositories for organization '${orgLogin}'`
-      );
+      const errorMessage = error instanceof Error ? error.message : `Failed to fetch repositories for organization '${orgLogin}'`;
+      throw new Error(errorMessage);
     }
   }
 
@@ -119,14 +137,32 @@ export class GitHubGraphQLClient {
     `;
 
     try {
-      const result: any = await this.client(query, { owner, repo });
+      const result = (await this.client(query, { owner, repo })) as {
+        repository?: {
+          defaultBranchRef?: {
+            target?: {
+              tree?: {
+                entries: Array<{
+                  name: string;
+                  path: string;
+                  type: string;
+                  object?: {
+                    byteSize?: number;
+                    oid?: string;
+                  };
+                }>;
+              };
+            };
+          };
+        };
+      };
 
       if (!result.repository?.defaultBranchRef?.target?.tree) {
         throw new Error(`Repository '${owner}/${repo}' not found or empty`);
       }
 
       const entries = result.repository.defaultBranchRef.target.tree.entries;
-      const files: RepoFile[] = entries.map((entry: any) => ({
+      const files: RepoFile[] = entries.map((entry) => ({
         name: entry.name,
         path: entry.path,
         type: entry.type === 'tree' ? 'dir' : 'file',
@@ -135,15 +171,14 @@ export class GitHubGraphQLClient {
       }));
 
       return files;
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error fetching repo files:', error);
-      throw new Error(
-        error.message || `Failed to fetch files for repository '${owner}/${repo}'`
-      );
+      const errorMessage = error instanceof Error ? error.message : `Failed to fetch files for repository '${owner}/${repo}'`;
+      throw new Error(errorMessage);
     }
   }
 
-  async searchCode(query: string, orgLogin: string): Promise<any[]> {
+  async searchCode(query: string, orgLogin: string): Promise<CodeSearchResult[]> {
     const searchQuery = `
       query($query: String!) {
         search(query: $query, type: CODE, first: 100) {
@@ -168,19 +203,35 @@ export class GitHubGraphQLClient {
 
     try {
       const searchString = `${query} org:${orgLogin}`;
-      const result: any = await this.client(searchQuery, {
+      const result = (await this.client(searchQuery, {
         query: searchString,
-      });
+      })) as {
+        search: {
+          edges: Array<{
+            node: {
+              name: string;
+              path: string;
+              repository: {
+                name: string;
+                owner: {
+                  login: string;
+                };
+              };
+            };
+          }>;
+        };
+      };
 
-      return result.search.edges.map((edge: any) => ({
+      return result.search.edges.map((edge) => ({
         file: edge.node.name,
         path: edge.node.path,
         repo: edge.node.repository.name,
         owner: edge.node.repository.owner.login,
       }));
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error searching code:', error);
-      throw new Error(error.message || 'Failed to search code');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to search code';
+      throw new Error(errorMessage);
     }
   }
 }
@@ -202,11 +253,18 @@ export async function fetchRepoFiles(
   return client.fetchRepoFiles(owner, repo);
 }
 
+export interface CodeSearchResult {
+  file: string;
+  path: string;
+  repo: string;
+  owner: string;
+}
+
 export async function searchCode(
   query: string,
   orgLogin: string,
   token: string
-): Promise<any[]> {
+): Promise<CodeSearchResult[]> {
   const client = new GitHubGraphQLClient({ token });
   return client.searchCode(query, orgLogin);
 }

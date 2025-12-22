@@ -41,10 +41,18 @@ export class GitHubClient {
         }),
       });
 
-      const data = await response.json();
+      const data = (await response.json()) as {
+        access_token?: string;
+        error?: string;
+        error_description?: string;
+      };
 
       if (data.error) {
         throw new Error(data.error_description || data.error);
+      }
+
+      if (!data.access_token) {
+        throw new Error('No access token received from GitHub');
       }
 
       this.token = data.access_token;
@@ -53,8 +61,9 @@ export class GitHubClient {
       });
 
       return this.token;
-    } catch (error: any) {
-      throw new Error(`OAuth authentication failed: ${error.message}`);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      throw new Error(`OAuth authentication failed: ${errorMessage}`);
     }
   }
 
@@ -65,7 +74,7 @@ export class GitHubClient {
 
     try {
       return await fetchOrgRepos(orgName, this.token);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error fetching org repos, falling back to mock:', error);
       return this.getMockOrgRepos(orgName);
     }
@@ -78,7 +87,7 @@ export class GitHubClient {
 
     try {
       return await fetchRepoFiles(owner, repo, this.token);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error fetching repo files, falling back to mock:', error);
       return this.getMockRepoFiles(owner, repo);
     }
