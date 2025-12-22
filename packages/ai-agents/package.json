@@ -1,0 +1,14 @@
+{
+  "name": "@org-code-ai/ai-agents",
+  "version": "1.0.0",
+  "main": "./index.ts",
+  "types": "./index.ts",
+  "private": true,
+  "dependencies": {
+    "openai": "^4.0.0"
+  },
+  "devDependencies": {
+    "typescript": "latest"
+  }
+}
+
