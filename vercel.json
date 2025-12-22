@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "buildCommand": "npm install && cd apps/dashboard && npm install --no-save @tailwindcss/postcss@^4 tw-animate-css@^1.4.0 && npm run build",
+  "buildCommand": "npm install && cd apps/dashboard && npm install && npm run build",
   "outputDirectory": "apps/dashboard/.next",
   "installCommand": "npm install",
   "framework": "nextjs"
