@@ -6,10 +6,14 @@ import type { ApiResponse } from '@org-code-ai/types';
 const router = Router();
 
 // Trigger organization scan (async via queue)
+interface SessionData {
+  githubToken?: string;
+}
+
 router.post('/scan/org/:orgName', async (req, res) => {
   try {
     const { orgName } = req.params;
-    const token = (req.session as any)?.githubToken || process.env.GITHUB_TOKEN;
+    const token = (req.session as SessionData)?.githubToken || process.env.GITHUB_TOKEN;
 
     if (!token) {
       return res.status(401).json({
@@ -85,7 +89,7 @@ router.get('/scan/status/:jobId', async (req, res) => {
       data: {
         id: job.id,
         status: state,
-        progress: job.progress || 0,
+        progress: (job.progress as number) || 0,
         result: job.returnvalue,
         failedReason: job.failedReason,
       },
@@ -109,7 +113,7 @@ router.get('/scan/status/:jobId', async (req, res) => {
 router.post('/scan/org/:orgName/immediate', async (req, res) => {
   try {
     const { orgName } = req.params;
-    const token = (req.session as any)?.githubToken || process.env.GITHUB_TOKEN;
+    const token = (req.session as SessionData)?.githubToken || process.env.GITHUB_TOKEN;
 
     if (!token) {
       return res.status(401).json({

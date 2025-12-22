@@ -16,8 +16,6 @@ import { fetchOrgRepos, fetchRepoFiles } from '@org-code-ai/graphql-client';
 import type { ApiResponse, Finding, Pattern, RepoFile } from '@org-code-ai/types';
 import { prisma } from './lib/prisma';
 import { GitHubScanner } from './services/github-scanner';
-import { VulnerabilityAnalyzer } from './services/vulnerability-analyzer';
-import { PRGenerator } from './services/pr-generator';
 import dashboardRoutes from './routes/dashboard';
 import metricsRoutes from './routes/metrics';
 import repositoryRoutes from './routes/repositories';
@@ -94,6 +92,10 @@ app.get('/api/auth/github', (req, res) => {
 });
 
 // GitHub OAuth - Callback
+interface SessionData {
+  githubToken?: string;
+}
+
 app.get('/api/auth/github/callback', async (req, res) => {
   const code = req.query.code as string;
   const state = req.query.state as string;
@@ -110,9 +112,6 @@ app.get('/api/auth/github/callback', async (req, res) => {
     const token = await client.authenticate(code);
 
     // Store token in session
-    interface SessionData {
-      githubToken?: string;
-    }
     (req.session as SessionData).githubToken = token;
 
     // Redirect to dashboard

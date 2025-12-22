@@ -7,10 +7,14 @@ import type { ApiResponse } from '@org-code-ai/types';
 const router = Router();
 const analyzer = new VulnerabilityAnalyzer();
 
+interface SessionData {
+  githubToken?: string;
+}
+
 router.post('/analyze/:owner/:repo', async (req, res) => {
   try {
     const { owner, repo } = req.params;
-    const token = (req.session as any)?.githubToken || process.env.GITHUB_TOKEN;
+    const token = (req.session as SessionData)?.githubToken || process.env.GITHUB_TOKEN;
 
     if (!token) {
       return res.status(401).json({

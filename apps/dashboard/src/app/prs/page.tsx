@@ -145,7 +145,7 @@ export default function PullRequestsPage() {
                 key={status}
                 variant={filters.status === status ? 'default' : 'outline'}
                 size="sm"
-                onClick={() => setFilters({ ...filters, status: status as any })}
+                onClick={() => setFilters({ ...filters, status: status as 'open' | 'merged' | 'closed' | 'rejected' })}
               >
                 {status.charAt(0).toUpperCase() + status.slice(1)}
               </Button>

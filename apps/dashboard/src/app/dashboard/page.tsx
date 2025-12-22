@@ -28,8 +28,18 @@ export default function DashboardPage() {
   const router = useRouter();
   const [repositories, setRepositories] = useState<Repo[]>([]);
   const [loading, setLoading] = useState(true);
-  const [overview, setOverview] = useState<any>(null);
-  const [metrics, setMetrics] = useState<any>(null);
+  const [overview, setOverview] = useState<{
+    repositories?: { total: number; addedThisMonth: number; change: string };
+    vulnerabilities?: { total: number; critical: number; high: number; medium: number; low: number; addedThisMonth: number; change: string };
+    securityScore?: { current: number; previous: number; change: number; changePercent: number; trend: string; display: string };
+  } | null>(null);
+  const [metrics, setMetrics] = useState<{
+    mttf?: { overall: number; bySeverity: Record<string, number> };
+    debt?: { ageAdjustedDebt: number };
+    velocity?: { timeline: Array<{ date: string; count: number }> };
+    surface?: { score: number };
+    compliance?: { score: number };
+  } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {

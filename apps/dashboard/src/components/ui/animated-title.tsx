@@ -34,7 +34,7 @@ export function AnimatedTitle({ text, className = '', as: Component = 'h1' }: An
     </span>
   ));
 
-  const ComponentWithRef = Component as any;
+  const ComponentWithRef = Component as React.ElementType;
 
   return (
     <ComponentWithRef ref={ref} className={className}>

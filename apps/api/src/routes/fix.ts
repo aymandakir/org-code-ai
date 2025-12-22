@@ -4,10 +4,14 @@ import type { ApiResponse } from '@org-code-ai/types';
 
 const router = Router();
 
+interface SessionData {
+  githubToken?: string;
+}
+
 router.post('/vulnerabilities/:id/fix', async (req, res) => {
   try {
     const { id } = req.params;
-    const token = (req.session as any)?.githubToken || process.env.GITHUB_TOKEN;
+    const token = (req.session as SessionData)?.githubToken || process.env.GITHUB_TOKEN;
 
     if (!token) {
       return res.status(401).json({

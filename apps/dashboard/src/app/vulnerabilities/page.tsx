@@ -137,7 +137,7 @@ export default function VulnerabilitiesPage() {
                 key={sev}
                 variant={filters.severity === sev ? 'default' : 'outline'}
                 size="sm"
-                onClick={() => setFilters({ ...filters, severity: sev as any })}
+                onClick={() => setFilters({ ...filters, severity: sev as 'critical' | 'high' | 'medium' | 'low' })}
               >
                 {sev.charAt(0).toUpperCase() + sev.slice(1)}
               </Button>

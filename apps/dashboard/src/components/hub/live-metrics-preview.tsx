@@ -7,8 +7,12 @@ import { fetchDashboardOverview, fetchSecurityDebt } from '@/lib/api';
 import CountUp from 'react-countup';
 
 export function LiveMetricsPreview() {
-  const [stats, setStats] = useState<any>(null);
-  const [debt, setDebt] = useState<any>(null);
+  const [stats, setStats] = useState<{
+    vulnerabilities?: { total: number; critical: number };
+  } | null>(null);
+  const [debt, setDebt] = useState<{
+    ageAdjustedDebt?: number;
+  } | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
