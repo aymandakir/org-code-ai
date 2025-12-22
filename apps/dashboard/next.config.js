@@ -15,10 +15,6 @@ const nextConfig = {
     ];
     return config;
   },
-  // Disable Turbopack to use webpack
-  experimental: {
-    turbo: undefined,
-  },
 };
 
 module.exports = nextConfig;

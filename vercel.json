@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "buildCommand": "npm install && cd apps/dashboard && npm install --legacy-peer-deps && npm run build -- --no-turbo",
+  "buildCommand": "npm install && cd apps/dashboard && npm install --legacy-peer-deps && TURBOPACK=0 npm run build",
   "outputDirectory": "apps/dashboard/.next",
   "installCommand": "npm install",
   "framework": "nextjs"
