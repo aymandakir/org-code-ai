@@ -2,7 +2,8 @@ const path = require('path');
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  reactCompiler: true,
+  // Disable React Compiler to avoid babel-plugin-react-compiler dependency issue
+  // reactCompiler: true,
   transpilePackages: ['@org-code-ai/types'],
   output: 'standalone',
   // Use webpack instead of Turbopack for better module resolution
