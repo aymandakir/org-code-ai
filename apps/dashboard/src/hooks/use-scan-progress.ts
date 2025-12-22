@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { io, Socket } from 'socket.io-client';
+import { io } from 'socket.io-client';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
@@ -75,12 +75,12 @@ export function useScanProgress() {
     });
 
     socketInstance.on('scan:completed', () => {
-      setProgress({
+      setProgress((prev) => ({
         isScanning: false,
-        current: progress.total,
-        total: progress.total,
+        current: prev.total,
+        total: prev.total,
         step: 'Scan completed!',
-      });
+      }));
     });
 
     return () => {
