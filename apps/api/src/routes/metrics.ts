@@ -108,7 +108,8 @@ router.get('/metrics/density', async (req, res) => {
     // For now, use a placeholder or fetch from repo metadata
     const density = repos.map((repo) => {
       // Placeholder: estimate LOC based on repo size or use 0
-      const linesOfCode = repo.linesOfCode || 0;
+      // Note: linesOfCode field doesn't exist in schema yet, using 0 as default
+      const linesOfCode = 0; // TODO: Add linesOfCode field to schema or fetch from GitHub
       const vulnCount = repo.vulnerabilities.length;
       const calculatedDensity = linesOfCode > 0 ? (vulnCount / linesOfCode) * 1000 : 0;
 
