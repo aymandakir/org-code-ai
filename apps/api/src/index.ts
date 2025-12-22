@@ -3,7 +3,6 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import session from 'express-session';
 import cookieParser from 'cookie-parser';
-// import { Octokit } from '@octokit/rest'; // TODO: Use for actual PR creation
 import { GitHubClient } from './github/client';
 import {
   scanCodeForVulnerabilities,
@@ -13,6 +12,10 @@ import {
 } from '@org-code-ai/ai-agents';
 import { fetchOrgRepos, fetchRepoFiles } from '@org-code-ai/graphql-client';
 import type { ApiResponse, Finding, Pattern, RepoFile } from '@org-code-ai/types';
+import { prisma } from './lib/prisma';
+import { GitHubScanner } from './services/github-scanner';
+import { VulnerabilityAnalyzer } from './services/vulnerability-analyzer';
+import { PRGenerator } from './services/pr-generator';
 
 dotenv.config();
 
@@ -106,6 +109,46 @@ app.get('/api/auth/github/callback', async (req, res) => {
   }
 });
 
+// Trigger organization scan (async)
+app.post('/api/orgs/:orgName/scan', async (req, res) => {
+  try {
+    const { orgName } = req.params;
+    interface SessionData {
+      githubToken?: string;
+    }
+    const token = (req.session as SessionData)?.githubToken || process.env.GITHUB_TOKEN;
+
+    if (!token) {
+      return res.status(401).json({
+        success: false,
+        error: 'GitHub token required for scanning',
+      } as ApiResponse<null>);
+    }
+
+    // Add job to queue
+    const { scanOrgQueue } = await import('./queue/scan-queue');
+    const job = await scanOrgQueue.add('scan-org', {
+      orgName,
+      token,
+    });
+
+    res.json({
+      success: true,
+      data: {
+        jobId: job.id,
+        status: 'queued',
+        message: 'Scan started. Use WebSocket to track progress.',
+      },
+    } as ApiResponse<{ jobId: string; status: string; message: string }>);
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Failed to start scan';
+    res.status(500).json({
+      success: false,
+      error: errorMessage,
+    } as ApiResponse<null>);
+  }
+});
+
 // Get organization repositories
 app.get('/api/orgs/:orgName/repos', async (req, res) => {
   try {
@@ -115,6 +158,37 @@ app.get('/api/orgs/:orgName/repos', async (req, res) => {
     }
     const token = (req.session as SessionData)?.githubToken || process.env.GITHUB_TOKEN;
 
+    // Try to get from database first
+    const org = await prisma.organization.findUnique({
+      where: { login: orgName },
+      include: {
+        repositories: {
+          orderBy: { updatedAt: 'desc' },
+          take: 100,
+        },
+      },
+    });
+
+    if (org && org.repositories.length > 0) {
+      const repos = org.repositories.map((r: { id: string; name: string; url: string; description: string | null; language: string | null; stars: number; forks: number; updatedAt: Date }) => ({
+        id: r.id,
+        name: r.name,
+        url: r.url,
+        description: r.description,
+        language: r.language,
+        stars: r.stars,
+        forks: r.forks,
+        updatedAt: r.updatedAt.toISOString(),
+      }));
+
+      return res.json({
+        success: true,
+        data: repos,
+        demoMode: false,
+      } as ApiResponse<typeof repos>);
+    }
+
+    // Fallback to GitHub API or mock data
     const client = new GitHubClient({ token: token || undefined });
     const repos = await client.getOrgRepos(orgName);
 
@@ -145,10 +219,25 @@ app.get('/api/repos/:owner/:repo/scan', async (req, res) => {
     }
     const token = (req.session as SessionData)?.githubToken || process.env.GITHUB_TOKEN;
 
-    const client = new GitHubClient({ token: token || undefined });
-    const files = await client.getRepoFiles(owner, repo);
+    if (token) {
+      // Use real GitHub scanner
+      const scanner = new GitHubScanner(token);
+      const result = await scanner.scanRepository(owner, repo, { token, storeInDb: true });
 
-    const isDemoMode = !token && !process.env.GITHUB_TOKEN;
+      return res.json({
+        success: true,
+        data: {
+          files: result.files,
+          totalFiles: result.totalFiles,
+          languages: result.languages,
+        },
+        demoMode: false,
+      } as ApiResponse<{ files: RepoFile[]; totalFiles: number; languages: string[] }>);
+    }
+
+    // Fallback to mock data
+    const client = new GitHubClient({ token: undefined });
+    const files = await client.getRepoFiles(owner, repo);
 
     res.json({
       success: true,
@@ -157,7 +246,7 @@ app.get('/api/repos/:owner/:repo/scan', async (req, res) => {
         totalFiles: files.length,
         languages: Array.from(new Set(files.map(f => f.name.split('.').pop() || '').filter(Boolean))),
       },
-      demoMode: isDemoMode,
+      demoMode: true,
     } as ApiResponse<{ files: RepoFile[]; totalFiles: number; languages: string[] }>);
   } catch (error: unknown) {
     console.error('Error scanning repo:', error);
@@ -430,7 +519,55 @@ app.get('/api/vulnerabilities', async (req, res) => {
     }
     const token = (req.session as SessionData)?.githubToken || process.env.GITHUB_TOKEN;
 
-    // Mock vulnerabilities for demo
+    // Try to get from database first
+    const where: any = {};
+    if (severity) {
+      where.severity = severity.toString().toUpperCase();
+    }
+    if (type) {
+      where.type = type.toString().toUpperCase();
+    }
+    if (repoId) {
+      where.repositoryId = repoId.toString();
+    }
+    if (resolved === 'false') {
+      where.isResolved = false;
+    } else if (resolved === 'true') {
+      where.isResolved = true;
+    }
+
+    const dbVulnerabilities = await prisma.vulnerability.findMany({
+      where,
+      include: {
+        repository: true,
+      },
+      orderBy: [
+        { severity: 'asc' },
+        { createdAt: 'desc' },
+      ],
+      take: 100,
+    });
+
+    if (dbVulnerabilities.length > 0) {
+      const findings: Finding[] = dbVulnerabilities.map((v: { id: string; type: string; severity: string; filePath: string; lineStart: number; description: string; suggestedCodePatch: string | null; fixStrategy: string | null; language: string | null }) => ({
+        id: v.id,
+        type: v.type,
+        severity: v.severity.toLowerCase() as Finding['severity'],
+        line: v.lineStart,
+        file: v.filePath,
+        description: v.description,
+        fix: v.suggestedCodePatch || v.fixStrategy || undefined,
+        language: v.language || undefined,
+      }));
+
+      return res.json({
+        success: true,
+        data: findings,
+        demoMode: false,
+      } as ApiResponse<Finding[]>);
+    }
+
+    // Fallback to mock data
     const mockVulnerabilities: Finding[] = [
       {
         id: '1',
@@ -552,7 +689,52 @@ app.get('/api/pull-requests', async (req, res) => {
     }
     const token = (req.session as SessionData)?.githubToken || process.env.GITHUB_TOKEN;
 
-    // Mock PRs for demo
+    // Try to get from database first
+    const where: any = {};
+    if (status) {
+      where.status = status.toString().toLowerCase();
+    }
+    if (repoId) {
+      where.repositoryId = repoId.toString();
+    }
+
+    const dbPRs = await prisma.pullRequestFix.findMany({
+      where,
+      include: {
+        repository: true,
+        vulnerability: true,
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+    });
+
+    if (dbPRs.length > 0) {
+      const prs = dbPRs.map((pr: { id: string; repositoryId: string; repository: { name: string }; prUrl: string; branchName: string; prNumber: number | null; title: string; description: string; commitMessage: string; commitSha: string | null; status: string; createdAt: Date; mergedAt: Date | null; rejectedAt: Date | null; vulnerabilityId: string | null }) => ({
+        id: pr.id,
+        repositoryId: pr.repositoryId,
+        repositoryName: pr.repository.name,
+        prUrl: pr.prUrl,
+        branchName: pr.branchName,
+        prNumber: pr.prNumber,
+        title: pr.title,
+        description: pr.description,
+        commitMessage: pr.commitMessage,
+        commitSha: pr.commitSha,
+        status: pr.status as 'open' | 'merged' | 'closed' | 'rejected',
+        createdAt: pr.createdAt.toISOString(),
+        mergedAt: pr.mergedAt?.toISOString() || null,
+        rejectedAt: pr.rejectedAt?.toISOString() || null,
+        vulnerabilitiesFixed: pr.vulnerabilityId ? [pr.vulnerabilityId] : [],
+      }));
+
+      return res.json({
+        success: true,
+        data: prs,
+        demoMode: false,
+      } as ApiResponse<typeof prs>);
+    }
+
+    // Fallback to mock data
     const mockPRs = [
       {
         id: '1',
@@ -643,7 +825,184 @@ app.get('/api/security-scores', async (req, res) => {
     }
     const token = (req.session as SessionData)?.githubToken || process.env.GITHUB_TOKEN;
 
-    // Mock security scores
+    // Calculate real security scores from database
+    if (repoId) {
+      const repo = await prisma.repository.findUnique({
+        where: { id: repoId.toString() },
+        include: {
+          vulnerabilities: {
+            where: { isResolved: false },
+          },
+          securityScores: {
+            orderBy: { createdAt: 'desc' },
+            take: 1,
+          },
+        },
+      });
+
+      if (repo) {
+        // Calculate score
+        let score = 100;
+        const breakdown = {
+          baseScore: 100,
+          critical: 0,
+          high: 0,
+          medium: 0,
+          low: 0,
+        };
+
+        repo.vulnerabilities.forEach((v: { severity: string }) => {
+          switch (v.severity) {
+            case 'CRITICAL':
+              score -= 20;
+              breakdown.critical -= 20;
+              break;
+            case 'HIGH':
+              score -= 10;
+              breakdown.high -= 10;
+              break;
+            case 'MEDIUM':
+              score -= 5;
+              breakdown.medium -= 5;
+              break;
+            case 'LOW':
+              score -= 2;
+              breakdown.low -= 2;
+              break;
+          }
+        });
+
+        score = Math.max(0, Math.min(100, score));
+
+        // Get trend
+        const allScores = await prisma.securityScore.findMany({
+          where: { repositoryId: repo.id },
+          orderBy: { createdAt: 'asc' },
+          take: 10,
+        });
+
+        const trend = allScores.map((s: { createdAt: Date; score: number }) => ({
+          date: s.createdAt.toISOString().split('T')[0],
+          score: s.score,
+        }));
+
+        // Top risks
+        const topRisks = await prisma.vulnerability.groupBy({
+          by: ['type', 'severity'],
+          where: {
+            repositoryId: repo.id,
+            isResolved: false,
+          },
+          _count: true,
+        });
+
+        const scoreData = {
+          repositoryId: repo.id,
+          repositoryName: repo.name,
+          score,
+          breakdown,
+          trend,
+          topRisks: topRisks.slice(0, 5).map((r: { type: string; _count: number; severity: string }) => ({
+            type: r.type,
+            count: r._count,
+            severity: r.severity.toLowerCase(),
+          })),
+        };
+
+        return res.json({
+          success: true,
+          data: scoreData,
+          demoMode: false,
+        } as ApiResponse<typeof scoreData>);
+      }
+    } else if (orgId) {
+      const org = await prisma.organization.findUnique({
+        where: { id: orgId.toString() },
+        include: {
+          repositories: {
+            include: {
+              vulnerabilities: {
+                where: { isResolved: false },
+              },
+            },
+          },
+        },
+      });
+
+      if (org) {
+        const repoScores = await Promise.all(
+          org.repositories.map(async (repo: { id: string; name: string; vulnerabilities: Array<{ severity: string }> }) => {
+            let score = 100;
+            repo.vulnerabilities.forEach((v: { severity: string }) => {
+              switch (v.severity) {
+                case 'CRITICAL':
+                  score -= 20;
+                  break;
+                case 'HIGH':
+                  score -= 10;
+                  break;
+                case 'MEDIUM':
+                  score -= 5;
+                  break;
+                case 'LOW':
+                  score -= 2;
+                  break;
+              }
+            });
+            score = Math.max(0, Math.min(100, score));
+
+            const prevScore = await prisma.securityScore.findFirst({
+              where: { repositoryId: repo.id },
+              orderBy: { createdAt: 'desc' },
+              skip: 1,
+            });
+
+            let trend: 'up' | 'down' | 'stable' = 'stable';
+            if (prevScore) {
+              if (score > prevScore.score) trend = 'up';
+              else if (score < prevScore.score) trend = 'down';
+            }
+
+            return {
+              id: repo.id,
+              name: repo.name,
+              score,
+              trend,
+            };
+          })
+        );
+
+        const allVulns = org.repositories.flatMap((r: { vulnerabilities: Array<{ severity: string }> }) => r.vulnerabilities);
+        const summary = {
+          totalRepos: org.repositories.length,
+          totalVulnerabilities: allVulns.length,
+          critical: allVulns.filter((v: { severity: string }) => v.severity === 'CRITICAL').length,
+          high: allVulns.filter((v: { severity: string }) => v.severity === 'HIGH').length,
+          medium: allVulns.filter((v: { severity: string }) => v.severity === 'MEDIUM').length,
+          low: allVulns.filter((v: { severity: string }) => v.severity === 'LOW').length,
+        };
+
+        const overallScore = repoScores.length > 0
+          ? Math.round(repoScores.reduce((sum: number, r: { score: number }) => sum + r.score, 0) / repoScores.length)
+          : 100;
+
+        const orgScoreData = {
+          organizationId: org.id,
+          organizationName: org.name,
+          overallScore,
+          repositoryScores: repoScores,
+          summary,
+        };
+
+        return res.json({
+          success: true,
+          data: orgScoreData,
+          demoMode: false,
+        } as ApiResponse<typeof orgScoreData>);
+      }
+    }
+
+    // Fallback to mock data
     const mockScores = repoId
       ? {
           repositoryId: repoId,
