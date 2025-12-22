@@ -49,7 +49,7 @@ router.get('/metrics/mttf', async (req, res) => {
     });
 
     const calculateAvg = (arr: number[]): number =>
-      arr.length > 0 ? arr.reduce((sum, v) => sum + v, 0) / arr.length : 0;
+      arr.length > 0 ? arr.reduce((sum: number, v: number) => sum + v, 0) / arr.length : 0;
 
     const allTimes = Object.values(mttfBySeverity).flat();
 
@@ -122,7 +122,7 @@ router.get('/metrics/density', async (req, res) => {
     });
 
     const orgAverage =
-      density.length > 0 ? density.reduce((sum, d) => sum + d.density, 0) / density.length : 0;
+      density.length > 0 ? density.reduce((sum: number, d: { density: number }) => sum + d.density, 0) / density.length : 0;
 
     res.json({
       success: true,
@@ -179,7 +179,7 @@ router.get('/metrics/security-debt', async (req, res) => {
       _count: true,
     });
 
-    const totalDebt = vulns.reduce((sum, v) => {
+    const totalDebt = vulns.reduce((sum: number, v: { _count: number; severity: string }) => {
       return sum + (v._count * (costMatrix[v.severity] || 0));
     }, 0);
 
@@ -196,7 +196,7 @@ router.get('/metrics/security-debt', async (req, res) => {
     });
 
     const now = new Date();
-    const ageAdjustedDebt = ageWeightedDebt.reduce((sum, v) => {
+    const ageAdjustedDebt = ageWeightedDebt.reduce((sum: number, v: { severity: string; createdAt: Date }) => {
       const ageInDays = (now.getTime() - v.createdAt.getTime()) / (1000 * 60 * 60 * 24);
       const baseCost = costMatrix[v.severity] || 0;
       // Add 10% per month of age
@@ -356,7 +356,7 @@ router.get('/metrics/attack-surface', async (req, res) => {
       },
     });
 
-    const surfaceScore = repos.reduce((score, repo) => {
+    const surfaceScore = repos.reduce((score: number, repo: { isPrivate: boolean; language: string | null; stars: number; vulnerabilities: Array<{ severity: string }> }) => {
       // Higher score = more exposed
       let repoScore = 0;
 

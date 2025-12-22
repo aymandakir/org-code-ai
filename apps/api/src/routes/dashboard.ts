@@ -44,8 +44,8 @@ router.get('/dashboard/overview', async (req, res) => {
       _count: true,
     });
 
-    const vulnStats = {
-      total: vulnerabilities.reduce((sum, v) => sum + v._count, 0),
+        const vulnStats = {
+          total: vulnerabilities.reduce((sum: number, v: { _count: number }) => sum + v._count, 0),
       critical: vulnerabilities.find((v) => v.severity === 'CRITICAL')?._count || 0,
       high: vulnerabilities.find((v) => v.severity === 'HIGH')?._count || 0,
       medium: vulnerabilities.find((v) => v.severity === 'MEDIUM')?._count || 0,
@@ -87,7 +87,7 @@ router.get('/dashboard/overview', async (req, res) => {
         ? Math.round(
             reposWithScores
               .filter((r) => r.securityScores.length > 0)
-              .reduce((sum, r) => sum + (r.securityScores[0]?.score || 0), 0) /
+              .reduce((sum: number, r: { securityScores: Array<{ score: number }> }) => sum + (r.securityScores[0]?.score || 0), 0) /
               reposWithScores.filter((r) => r.securityScores.length > 0).length || 1
           )
         : 0;
@@ -108,7 +108,7 @@ router.get('/dashboard/overview', async (req, res) => {
 
     const prevAvgScore =
       previousScores.length > 0
-        ? Math.round(previousScores.reduce((sum, s) => sum + s.score, 0) / previousScores.length)
+        ? Math.round(previousScores.reduce((sum: number, s: { score: number }) => sum + s.score, 0) / previousScores.length)
         : avgScore;
 
     const scoreChange = avgScore - prevAvgScore;
