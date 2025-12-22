@@ -1,0 +1,10 @@
+apps/api/**
+packages/**
+node_modules
+.env*
+*.log
+.DS_Store
+docker-compose.yml
+.git
+.github
+
