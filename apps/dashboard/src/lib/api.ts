@@ -276,3 +276,216 @@ export async function fetchSecurityScores(
   };
 }
 
+// ============================================
+// DASHBOARD & METRICS API
+// ============================================
+
+// Dashboard overview
+export async function fetchDashboardOverview(orgId: string): Promise<{
+  repositories: { total: number; addedThisMonth: number; change: string };
+  vulnerabilities: {
+    total: number;
+    critical: number;
+    high: number;
+    medium: number;
+    low: number;
+    addedThisMonth: number;
+    change: string;
+  };
+  securityScore: {
+    current: number;
+    previous: number;
+    change: number;
+    changePercent: number;
+    trend: 'up' | 'down';
+    display: string;
+  };
+}> {
+  const response = await fetchApi<{
+    repositories: { total: number; addedThisMonth: number; change: string };
+    vulnerabilities: {
+      total: number;
+      critical: number;
+      high: number;
+      medium: number;
+      low: number;
+      addedThisMonth: number;
+      change: string;
+    };
+    securityScore: {
+      current: number;
+      previous: number;
+      change: number;
+      changePercent: number;
+      trend: 'up' | 'down';
+      display: string;
+    };
+  }>(`/api/dashboard/overview?orgId=${orgId}`);
+  if (!response.success || !response.data) {
+    throw new Error(response.error || 'Failed to fetch dashboard overview');
+  }
+  return response.data;
+}
+
+// Advanced metrics
+export async function fetchMTTF(orgId: string): Promise<{
+  overall: number;
+  bySeverity: { critical: number; high: number; medium: number; low: number };
+  unit: string;
+}> {
+  const response = await fetchApi<{
+    overall: number;
+    bySeverity: { critical: number; high: number; medium: number; low: number };
+    unit: string;
+  }>(`/api/metrics/mttf?orgId=${orgId}`);
+  if (!response.success || !response.data) {
+    throw new Error(response.error || 'Failed to fetch MTTF');
+  }
+  return response.data;
+}
+
+export async function fetchVulnerabilityDensity(orgId: string): Promise<{
+  byRepo: Array<{ repoName: string; repoId: string; linesOfCode: number; vulnCount: number; density: number }>;
+  orgAverage: number;
+}> {
+  const response = await fetchApi<{
+    byRepo: Array<{ repoName: string; repoId: string; linesOfCode: number; vulnCount: number; density: number }>;
+    orgAverage: number;
+  }>(`/api/metrics/density?orgId=${orgId}`);
+  if (!response.success || !response.data) {
+    throw new Error(response.error || 'Failed to fetch vulnerability density');
+  }
+  return response.data;
+}
+
+export async function fetchSecurityDebt(orgId: string): Promise<{
+  totalDebt: number;
+  ageAdjustedDebt: number;
+  currency: string;
+  interpretation: string;
+}> {
+  const response = await fetchApi<{
+    totalDebt: number;
+    ageAdjustedDebt: number;
+    currency: string;
+    interpretation: string;
+  }>(`/api/metrics/security-debt?orgId=${orgId}`);
+  if (!response.success || !response.data) {
+    throw new Error(response.error || 'Failed to fetch security debt');
+  }
+  return response.data;
+}
+
+export async function fetchSecurityVelocity(orgId: string, days: number = 30): Promise<{
+  timeline: Array<{
+    date: string;
+    newVulns: number;
+    fixedVulns: number;
+    netChange: number;
+    runningTotal: number;
+  }>;
+  trend: 'worsening' | 'improving';
+}> {
+  const response = await fetchApi<{
+    timeline: Array<{
+      date: string;
+      newVulns: number;
+      fixedVulns: number;
+      netChange: number;
+      runningTotal: number;
+    }>;
+    trend: 'worsening' | 'improving';
+  }>(`/api/metrics/velocity?orgId=${orgId}&days=${days}`);
+  if (!response.success || !response.data) {
+    throw new Error(response.error || 'Failed to fetch security velocity');
+  }
+  return response.data;
+}
+
+export async function fetchAttackSurface(orgId: string): Promise<{
+  score: number;
+  normalized: number;
+  interpretation: string;
+}> {
+  const response = await fetchApi<{
+    score: number;
+    normalized: number;
+    interpretation: string;
+  }>(`/api/metrics/attack-surface?orgId=${orgId}`);
+  if (!response.success || !response.data) {
+    throw new Error(response.error || 'Failed to fetch attack surface');
+  }
+  return response.data;
+}
+
+export async function fetchCompliance(orgId: string): Promise<{
+  score: number;
+  breakdown: Record<string, number>;
+  passing: boolean;
+  message: string;
+}> {
+  const response = await fetchApi<{
+    score: number;
+    breakdown: Record<string, number>;
+    passing: boolean;
+    message: string;
+  }>(`/api/metrics/compliance?orgId=${orgId}`);
+  if (!response.success || !response.data) {
+    throw new Error(response.error || 'Failed to fetch compliance');
+  }
+  return response.data;
+}
+
+// Repository analysis
+export async function fetchRepositoryAnalysis(owner: string, repo: string): Promise<{
+  repository: {
+    id: string;
+    name: string;
+    fullName: string;
+    url: string;
+    description: string | null;
+    language: string | null;
+    stars: number;
+    forks: number;
+    isPrivate: boolean;
+  };
+  metrics: {
+    totalVulnerabilities: number;
+    affectedFiles: number;
+    securityScore: number;
+    lastScanAt: Date | null;
+    openPRs: number;
+    languageBreakdown: Array<{ language: string; count: number }>;
+  };
+  vulnerabilities: unknown[];
+  recentPRs: unknown[];
+}> {
+  const response = await fetchApi<{
+    repository: {
+      id: string;
+      name: string;
+      fullName: string;
+      url: string;
+      description: string | null;
+      language: string | null;
+      stars: number;
+      forks: number;
+      isPrivate: boolean;
+    };
+    metrics: {
+      totalVulnerabilities: number;
+      affectedFiles: number;
+      securityScore: number;
+      lastScanAt: Date | null;
+      openPRs: number;
+      languageBreakdown: Array<{ language: string; count: number }>;
+    };
+    vulnerabilities: unknown[];
+    recentPRs: unknown[];
+  }>(`/api/repositories/${owner}/${repo}/analysis`);
+  if (!response.success || !response.data) {
+    throw new Error(response.error || 'Failed to fetch repository analysis');
+  }
+  return response.data;
+}
+

@@ -16,6 +16,9 @@ import { prisma } from './lib/prisma';
 import { GitHubScanner } from './services/github-scanner';
 import { VulnerabilityAnalyzer } from './services/vulnerability-analyzer';
 import { PRGenerator } from './services/pr-generator';
+import dashboardRoutes from './routes/dashboard';
+import metricsRoutes from './routes/metrics';
+import repositoryRoutes from './routes/repositories';
 
 dotenv.config();
 
@@ -32,6 +35,11 @@ app.use(
 
 app.use(cookieParser());
 app.use(express.json());
+
+// Mount routes
+app.use('/api', dashboardRoutes);
+app.use('/api', metricsRoutes);
+app.use('/api', repositoryRoutes);
 
 // Session configuration
 app.use(
