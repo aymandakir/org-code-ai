@@ -20,12 +20,6 @@ export default function RepoScanPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (owner && repo) {
-      loadRepoData();
-    }
-  }, [owner, repo]);
-
   const loadRepoData = async () => {
     setLoading(true);
     setError(null);
