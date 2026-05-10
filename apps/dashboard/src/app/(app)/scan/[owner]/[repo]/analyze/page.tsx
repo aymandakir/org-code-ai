@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Scan, AlertCircle, CheckCircle } from 'lucide-react';
+import { saveFindings } from '@/lib/store';
 
 type Severity = 'Critical' | 'High' | 'Medium' | 'Low';
 
@@ -44,6 +45,7 @@ export default function AnalyzePage() {
     setStatus('Starting scan…');
 
     abortRef.current = new AbortController();
+    const collectedFindings: Finding[] = [];
 
     try {
       const res = await fetch('/api/github/analyze', {
@@ -71,8 +73,16 @@ export default function AnalyzePage() {
           try {
             const evt = JSON.parse(line.slice(5).trim());
             if (evt.type === 'progress') { setPct(evt.pct); setStatus(evt.message); }
-            else if (evt.type === 'result') setFindings(prev => [...prev, evt.row as Finding]);
-            else if (evt.type === 'done') setDone(true);
+            else if (evt.type === 'result') {
+              const f = evt.row as Finding;
+              collectedFindings.push(f);
+              setFindings(prev => [...prev, f]);
+            }
+            else if (evt.type === 'done') {
+              setDone(true);
+              // Persist to localStorage
+              saveFindings(owner, repo, collectedFindings);
+            }
             else if (evt.type === 'error') setError(evt.message);
           } catch { /* ignore malformed frames */ }
         }
@@ -84,7 +94,6 @@ export default function AnalyzePage() {
     }
   };
 
-  // Auto-start scan on mount
   useEffect(() => { startScan(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const stop = () => { abortRef.current?.abort(); setScanning(false); setStatus('Scan stopped.'); };
@@ -117,7 +126,6 @@ export default function AnalyzePage() {
         </div>
       </div>
 
-      {/* Progress bar */}
       {(scanning || (pct > 0 && !done)) && (
         <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
           <div className="flex justify-between text-sm mb-3">
@@ -125,10 +133,7 @@ export default function AnalyzePage() {
             <span className="text-indigo-400 font-semibold">{pct}%</span>
           </div>
           <div className="h-1.5 bg-gray-800 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-gradient-to-r from-indigo-500 to-violet-500 rounded-full transition-all duration-500"
-              style={{ width: `${pct}%` }}
-            />
+            <div className="h-full bg-gradient-to-r from-indigo-500 to-violet-500 rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
           </div>
         </div>
       )}
@@ -137,8 +142,8 @@ export default function AnalyzePage() {
         <div className={`flex items-center gap-3 px-5 py-3 rounded-xl text-sm font-medium ${findings.length > 0 ? 'bg-orange-950/40 border border-orange-900 text-orange-300' : 'bg-green-950/40 border border-green-900 text-green-400'}`}>
           {findings.length > 0 ? <AlertCircle className="w-4 h-4 shrink-0" /> : <CheckCircle className="w-4 h-4 shrink-0" />}
           {findings.length > 0
-            ? `Found ${findings.length} issue${findings.length !== 1 ? 's' : ''} — ${Object.entries(counts).map(([s, n]) => `${n} ${s}`).join(', ')}`
-            : 'No vulnerabilities detected — this repo looks clean!'
+            ? `Found ${findings.length} issue${findings.length !== 1 ? 's' : ''} — ${Object.entries(counts).map(([s, n]) => `${n} ${s}`).join(', ')} · Results saved`
+            : 'No vulnerabilities detected in the scanned files.'
           }
         </div>
       )}
@@ -170,14 +175,10 @@ export default function AnalyzePage() {
               <div key={i} className="px-5 py-4">
                 <div className="flex items-start justify-between gap-4 mb-2">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className={`text-xs px-2.5 py-0.5 rounded-full font-medium ${SEVERITY_STYLES[f.severity]}`}>
-                      {f.severity}
-                    </span>
+                    <span className={`text-xs px-2.5 py-0.5 rounded-full font-medium ${SEVERITY_STYLES[f.severity]}`}>{f.severity}</span>
                     <span className="text-sm font-semibold text-white">{f.type}</span>
                   </div>
-                  <code className="text-xs text-gray-500 font-mono shrink-0 max-w-48 truncate" title={f.filePath}>
-                    {f.filePath}
-                  </code>
+                  <code className="text-xs text-gray-500 font-mono shrink-0 max-w-48 truncate" title={f.filePath}>{f.filePath}</code>
                 </div>
                 <p className="text-sm text-gray-400 mb-1">{f.description}</p>
                 <p className="text-xs text-indigo-400 font-mono">→ {f.fix}</p>

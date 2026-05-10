@@ -7,8 +7,13 @@ export const maxDuration = 60;
 
 const CODE_EXTENSIONS = new Set([
   '.ts', '.tsx', '.js', '.jsx', '.py', '.php',
-  '.java', '.rb', '.go', '.rs', '.cs', '.cpp', '.c',
+  '.java', '.rb', '.go', '.rs', '.cs', '.cpp', '.c', '.vue', '.svelte',
 ]);
+
+// Deprioritized paths — scan last
+const LOW_PRIORITY = /node_modules|\.min\.|vendor|dist\/|build\/|\.d\.ts$|__pycache__|\.test\.|\.spec\.|fixture/i;
+// Prioritized paths — scan first
+const HIGH_PRIORITY = /(?:src|lib|server|api|routes|controllers|middleware|auth|utils|helpers)\//i;
 
 function ext(path: string) {
   const i = path.lastIndexOf('.');
@@ -20,15 +25,15 @@ function send(controller: ReadableStreamDefaultController, data: object) {
 }
 
 async function getFiles(octokit: Octokit, owner: string, repo: string, path = '', depth = 0): Promise<string[]> {
-  if (depth > 3) return [];
+  if (depth > 4) return [];
   try {
     const { data } = await octokit.repos.getContent({ owner, repo, path });
     if (!Array.isArray(data)) return [];
     const files: string[] = [];
     for (const item of data) {
-      if (item.type === 'file' && CODE_EXTENSIONS.has(ext(item.path))) {
+      if (item.type === 'file' && CODE_EXTENSIONS.has(ext(item.path)) && !LOW_PRIORITY.test(item.path)) {
         files.push(item.path);
-      } else if (item.type === 'dir' && !item.path.includes('node_modules') && !item.path.startsWith('.')) {
+      } else if (item.type === 'dir' && !item.path.startsWith('.') && !LOW_PRIORITY.test(item.path + '/')) {
         files.push(...await getFiles(octokit, owner, repo, item.path, depth + 1));
       }
     }
@@ -36,6 +41,12 @@ async function getFiles(octokit: Octokit, owner: string, repo: string, path = ''
   } catch {
     return [];
   }
+}
+
+function prioritizeFiles(files: string[]): string[] {
+  const high = files.filter(f => HIGH_PRIORITY.test(f));
+  const rest = files.filter(f => !HIGH_PRIORITY.test(f));
+  return [...high, ...rest];
 }
 
 export async function POST(req: NextRequest) {
@@ -49,8 +60,8 @@ export async function POST(req: NextRequest) {
       try {
         send(controller, { type: 'progress', pct: 5, message: `Fetching file list for ${org}/${repo}…` });
 
-        const files = await getFiles(octokit, org, repo);
-        const toScan = files.slice(0, 8);
+        const allFiles = await getFiles(octokit, org, repo);
+        const toScan = prioritizeFiles(allFiles).slice(0, 20);
 
         if (toScan.length === 0) {
           send(controller, { type: 'done', total: 0 });
@@ -58,7 +69,7 @@ export async function POST(req: NextRequest) {
           return;
         }
 
-        send(controller, { type: 'progress', pct: 15, message: `Found ${files.length} files. Scanning ${toScan.length}…` });
+        send(controller, { type: 'progress', pct: 15, message: `Found ${allFiles.length} files. Scanning ${toScan.length}…` });
 
         const results: object[] = [];
 
@@ -69,8 +80,16 @@ export async function POST(req: NextRequest) {
 
           try {
             const { data } = await octokit.repos.getContent({ owner: org, repo, path: filePath });
-            if (Array.isArray(data) || data.type !== 'file' || !data.content) continue;
-            const content = Buffer.from(data.content, 'base64').toString('utf-8');
+            if (Array.isArray(data) || data.type !== 'file') continue;
+
+            let content = '';
+            if (data.content) {
+              content = Buffer.from(data.content, 'base64').toString('utf-8');
+            } else if (data.download_url) {
+              // Large file — fetch directly
+              const res = await fetch(data.download_url);
+              content = await res.text();
+            }
             if (!content.trim()) continue;
 
             const vulns = analyzeContent(content);
