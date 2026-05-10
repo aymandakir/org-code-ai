@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { Shield, Search, GitPullRequest, BarChart3, ArrowRight, Zap, Lock, Eye } from 'lucide-react';
 import { getFindings, getSecurityScore, type StoredFinding } from '@/lib/store';
@@ -19,11 +19,7 @@ const FEATURES = [
 ];
 
 export default function DashboardPage() {
-  const [findings, setFindings] = useState<StoredFinding[]>([]);
-
-  useEffect(() => {
-    setFindings(getFindings());
-  }, []);
+  const [findings] = useState<StoredFinding[]>(getFindings);
 
   const repos = [...new Set(findings.map(f => `${f.org}/${f.repo}`))];
   const critical = findings.filter(f => f.severity === 'Critical').length;

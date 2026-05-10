@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useState } from 'react';
 
 export type Theme = 'dark' | 'light' | 'midnight';
 
@@ -11,13 +11,13 @@ interface ThemeContextValue {
 
 const ThemeContext = createContext<ThemeContextValue>({ theme: 'dark', setTheme: () => {} });
 
-export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>('dark');
+function readTheme(): Theme {
+  if (typeof window === 'undefined') return 'dark';
+  return (localStorage.getItem('theme') as Theme | null) ?? 'dark';
+}
 
-  useEffect(() => {
-    const saved = localStorage.getItem('theme') as Theme | null;
-    if (saved) setThemeState(saved);
-  }, []);
+export function ThemeProvider({ children }: { children: React.ReactNode }) {
+  const [theme, setThemeState] = useState<Theme>(readTheme);
 
   const setTheme = (t: Theme) => {
     setThemeState(t);

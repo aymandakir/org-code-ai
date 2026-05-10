@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { BarChart3, Search, TrendingUp, Shield } from 'lucide-react';
 import { getFindings, getSecurityScore, type StoredFinding, type Severity } from '@/lib/store';
@@ -10,9 +10,7 @@ const GRADE = (s: number) => s >= 90 ? { g: 'A', color: 'text-emerald-400', bg: 
 const SEV_WEIGHT: Record<Severity, number> = { Critical: 20, High: 10, Medium: 5, Low: 1 };
 
 export default function ScorePage() {
-  const [findings, setFindings] = useState<StoredFinding[]>([]);
-
-  useEffect(() => { setFindings(getFindings()); }, []);
+  const [findings] = useState<StoredFinding[]>(getFindings);
 
   const score = findings.length > 0 ? getSecurityScore(findings) : null;
   const grade = score !== null ? GRADE(score) : null;

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { Shield, Search, AlertCircle, AlertTriangle, Info } from 'lucide-react';
 import { getFindings, type StoredFinding, type Severity } from '@/lib/store';
@@ -15,10 +15,8 @@ const SEV_CFG: Record<Severity, { icon: React.ComponentType<{className?:string}>
 const SEVERITIES: Severity[] = ['Critical', 'High', 'Medium', 'Low'];
 
 export default function VulnerabilitiesPage() {
-  const [findings, setFindings] = useState<StoredFinding[]>([]);
+  const [findings] = useState<StoredFinding[]>(getFindings);
   const [filter, setFilter] = useState<Severity | 'All'>('All');
-
-  useEffect(() => { setFindings(getFindings()); }, []);
 
   const counts = SEVERITIES.reduce((acc, s) => ({ ...acc, [s]: findings.filter(f => f.severity === s).length }), {} as Record<Severity, number>);
   const visible = filter === 'All' ? findings : findings.filter(f => f.severity === filter);
