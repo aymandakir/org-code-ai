@@ -1,294 +1,120 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { fetchSecurityScores, type SecurityScore } from '@/lib/api';
-import { TrendingUp, TrendingDown, Minus, Shield, AlertTriangle } from 'lucide-react';
+import Link from 'next/link';
+import { BarChart3, Search, TrendingUp, AlertTriangle, CheckCircle, Shield } from 'lucide-react';
 
-export default function SecurityScorePage() {
-  const [score, setScore] = useState<SecurityScore | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [demoMode, setDemoMode] = useState(false);
+const SCORE_FACTORS = [
+  { label: 'Critical vulnerabilities',  impact: 'High impact',   direction: 'down', color: 'text-red-400',    bar: 'bg-red-500' },
+  { label: 'High severity issues',      impact: 'Medium impact',  direction: 'down', color: 'text-orange-400', bar: 'bg-orange-500' },
+  { label: 'Time to fix (MTTF)',        impact: 'Medium impact',  direction: 'up',   color: 'text-yellow-400', bar: 'bg-yellow-500' },
+  { label: 'Repos scanned',             impact: 'Low impact',     direction: 'up',   color: 'text-emerald-400',bar: 'bg-emerald-500' },
+  { label: 'Fix PRs merged',            impact: 'Low impact',     direction: 'up',   color: 'text-blue-400',   bar: 'bg-blue-500' },
+];
 
-  useEffect(() => {
-    loadScores();
-  }, []);
+const GRADE_SCALE = [
+  { grade: 'A', range: '90–100', color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20' },
+  { grade: 'B', range: '75–89',  color: 'text-blue-400',    bg: 'bg-blue-500/10',    border: 'border-blue-500/20' },
+  { grade: 'C', range: '60–74',  color: 'text-yellow-400',  bg: 'bg-yellow-500/10',  border: 'border-yellow-500/20' },
+  { grade: 'D', range: '40–59',  color: 'text-orange-400',  bg: 'bg-orange-500/10',  border: 'border-orange-500/20' },
+  { grade: 'F', range: '0–39',   color: 'text-red-400',     bg: 'bg-red-500/10',     border: 'border-red-500/20' },
+];
 
-  const loadScores = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const { score: fetchedScore, demoMode: demo } = await fetchSecurityScores();
-      setScore(fetchedScore);
-      setDemoMode(demo);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load security scores');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const getScoreColor = (score: number) => {
-    if (score >= 90) return 'text-green-400';
-    if (score >= 75) return 'text-yellow-400';
-    if (score >= 60) return 'text-orange-400';
-    return 'text-red-400';
-  };
-
-  const getScoreBgColor = (score: number) => {
-    if (score >= 90) return 'bg-green-900/20 border-green-800';
-    if (score >= 75) return 'bg-yellow-900/20 border-yellow-800';
-    if (score >= 60) return 'bg-orange-900/20 border-orange-800';
-    return 'bg-red-900/20 border-red-800';
-  };
-
-  const getTrendIcon = (trend: string) => {
-    switch (trend) {
-      case 'up':
-        return <TrendingUp className="w-4 h-4 text-green-400" />;
-      case 'down':
-        return <TrendingDown className="w-4 h-4 text-red-400" />;
-      default:
-        return <Minus className="w-4 h-4 text-gray-400" />;
-    }
-  };
-
+export default function ScorePage() {
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-white">Security Score</h1>
-        <p className="text-gray-400 mt-2">Overall security posture and trends across your organization</p>
+    <div className="space-y-8">
+
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="text-3xl font-bold text-white">Security Score</h1>
+          <p className="text-gray-400 mt-1 text-sm">Overall security posture based on vulnerability findings.</p>
+        </div>
+        <Link
+          href="/scan"
+          className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold rounded-lg transition-colors"
+        >
+          <Search className="w-4 h-4" />
+          Scan to generate score
+        </Link>
       </div>
 
-      {demoMode && (
-        <Card className="bg-blue-900/20 border-blue-800">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-2 text-blue-300">
-              <Shield className="h-5 w-5" />
-              <p className="text-sm">
-                <strong>Demo Mode:</strong> Showing mock security score data. Connect GitHub App for real scores.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      {/* Score display */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="lg:col-span-1 bg-gray-900 border border-gray-800 rounded-xl p-8 flex flex-col items-center justify-center text-center">
+          <div className="w-28 h-28 rounded-full border-4 border-gray-800 flex items-center justify-center mb-4 relative">
+            <div className="absolute inset-0 rounded-full bg-gradient-to-br from-indigo-500/10 to-violet-500/10" />
+            <span className="text-4xl font-bold text-gray-600 relative">—</span>
+          </div>
+          <div className="text-lg font-semibold text-white mb-1">Overall Score</div>
+          <div className="text-xs text-gray-500">Scan repositories to generate your score</div>
+        </div>
 
-      {error && (
-        <Card className="bg-gray-900 border-red-800">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-2 text-red-400">
-              <AlertTriangle className="h-5 w-5" />
-              <p>{error}</p>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+        <div className="lg:col-span-2 bg-gray-900 border border-gray-800 rounded-xl p-6">
+          <h2 className="text-sm font-semibold text-white mb-5 flex items-center gap-2">
+            <TrendingUp className="w-4 h-4 text-indigo-400" />
+            Score factors
+          </h2>
+          <div className="space-y-4">
+            {SCORE_FACTORS.map(f => (
+              <div key={f.label}>
+                <div className="flex items-center justify-between text-xs mb-1.5">
+                  <span className="text-gray-400 flex items-center gap-1.5">
+                    {f.direction === 'down'
+                      ? <AlertTriangle className="w-3 h-3 text-gray-600" />
+                      : <CheckCircle className="w-3 h-3 text-gray-600" />
+                    }
+                    {f.label}
+                  </span>
+                  <span className={f.color}>{f.impact}</span>
+                </div>
+                <div className="h-1.5 bg-gray-800 rounded-full">
+                  <div className={`h-full w-0 ${f.bar} rounded-full`} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
 
-      {loading ? (
-        <div className="space-y-4">
-          {[1, 2, 3].map((i) => (
-            <Card key={i} className="bg-gray-900 border-gray-800 animate-pulse">
-              <CardContent className="pt-6">
-                <div className="h-8 bg-gray-800 rounded w-1/3 mb-4"></div>
-                <div className="h-4 bg-gray-800 rounded w-1/2"></div>
-              </CardContent>
-            </Card>
+      {/* Empty state */}
+      <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
+        <div className="px-5 py-3 border-b border-gray-800">
+          <h2 className="text-sm font-semibold text-white">Repository Scores</h2>
+        </div>
+        <div className="py-20 text-center">
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-gray-800 mb-5">
+            <BarChart3 className="w-6 h-6 text-gray-600" />
+          </div>
+          <h3 className="text-white font-semibold mb-2">No score data yet</h3>
+          <p className="text-gray-500 text-sm mb-6 max-w-sm mx-auto">
+            Security scores are calculated automatically after scanning your repositories.
+          </p>
+          <Link
+            href="/scan"
+            className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold rounded-lg transition-colors"
+          >
+            <Search className="w-4 h-4" />
+            Start scanning
+          </Link>
+        </div>
+      </div>
+
+      {/* Grading scale */}
+      <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
+        <h2 className="text-sm font-semibold text-white mb-2 flex items-center gap-2">
+          <Shield className="w-4 h-4 text-indigo-400" />
+          Grading scale
+        </h2>
+        <p className="text-xs text-gray-500 mb-5">How scores translate to security grades</p>
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+          {GRADE_SCALE.map(g => (
+            <div key={g.grade} className={`${g.bg} ${g.border} border rounded-xl p-4 text-center`}>
+              <div className={`text-2xl font-bold ${g.color} mb-1`}>{g.grade}</div>
+              <div className="text-xs text-gray-500">{g.range}</div>
+            </div>
           ))}
         </div>
-      ) : score ? (
-        <>
-          {/* Overall Score */}
-          {score.overallScore !== undefined ? (
-            <Card className={`bg-gray-900 border-gray-800 ${getScoreBgColor(score.overallScore)}`}>
-              <CardHeader>
-                <CardTitle className="text-white">Organization Security Score</CardTitle>
-                <CardDescription className="text-gray-400">
-                  {score.organizationName || 'Your Organization'}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-baseline gap-4">
-                  <div className={`text-6xl font-bold ${getScoreColor(score.overallScore)}`}>
-                    {score.overallScore}
-                  </div>
-                  <div className="text-2xl text-gray-500">/ 100</div>
-                </div>
-                {score.summary && (
-                  <div className="mt-6 grid grid-cols-2 md:grid-cols-5 gap-4">
-                    <div>
-                      <div className="text-sm text-gray-400">Repositories</div>
-                      <div className="text-xl font-semibold text-white">{score.summary.totalRepos}</div>
-                    </div>
-                    <div>
-                      <div className="text-sm text-gray-400">Total Vulns</div>
-                      <div className="text-xl font-semibold text-white">{score.summary.totalVulnerabilities}</div>
-                    </div>
-                    <div>
-                      <div className="text-sm text-red-400">Critical</div>
-                      <div className="text-xl font-semibold text-red-400">{score.summary.critical}</div>
-                    </div>
-                    <div>
-                      <div className="text-sm text-orange-400">High</div>
-                      <div className="text-xl font-semibold text-orange-400">{score.summary.high}</div>
-                    </div>
-                    <div>
-                      <div className="text-sm text-yellow-400">Medium</div>
-                      <div className="text-xl font-semibold text-yellow-400">{score.summary.medium}</div>
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          ) : (
-            <Card className={`bg-gray-900 border-gray-800 ${getScoreBgColor(score.score)}`}>
-              <CardHeader>
-                <CardTitle className="text-white">Repository Security Score</CardTitle>
-                <CardDescription className="text-gray-400">
-                  {score.repositoryName || 'Repository'}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-baseline gap-4">
-                  <div className={`text-6xl font-bold ${getScoreColor(score.score)}`}>
-                    {score.score}
-                  </div>
-                  <div className="text-2xl text-gray-500">/ 100</div>
-                </div>
-                {score.breakdown && (
-                  <div className="mt-6 space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-400">Base Score</span>
-                      <span className="text-white">+{score.breakdown.baseScore}</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-red-400">Critical Vulnerabilities</span>
-                      <span className="text-red-400">{score.breakdown.critical}</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-orange-400">High Vulnerabilities</span>
-                      <span className="text-orange-400">{score.breakdown.high}</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-yellow-400">Medium Vulnerabilities</span>
-                      <span className="text-yellow-400">{score.breakdown.medium}</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-blue-400">Low Vulnerabilities</span>
-                      <span className="text-blue-400">{score.breakdown.low}</span>
-                    </div>
-                  </div>
-                )}
-                {score.topRisks && score.topRisks.length > 0 && (
-                  <div className="mt-6">
-                    <div className="text-sm font-medium text-gray-400 mb-2">Top Risks</div>
-                    <div className="space-y-2">
-                      {score.topRisks.map((risk, i) => (
-                        <div key={i} className="flex items-center justify-between text-sm">
-                          <span className="text-gray-300">{risk.type.replace(/_/g, ' ')}</span>
-                          <Badge variant="outline" className="border-gray-700 text-gray-400">
-                            {risk.count} {risk.severity}
-                          </Badge>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          )}
+      </div>
 
-          {/* Repository Scores */}
-          {score.repositoryScores && score.repositoryScores.length > 0 && (
-            <Card className="bg-gray-900 border-gray-800">
-              <CardHeader>
-                <CardTitle className="text-white">Repository Scores</CardTitle>
-                <CardDescription className="text-gray-400">
-                  Security scores for each repository
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {score.repositoryScores.map((repo) => (
-                    <div
-                      key={repo.id}
-                      className="flex items-center justify-between p-4 border border-gray-800 rounded-lg hover:border-gray-700 transition-colors"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className={`text-2xl font-bold ${getScoreColor(repo.score)}`}>
-                          {repo.score}
-                        </div>
-                        <div>
-                          <div className="font-medium text-white">{repo.name}</div>
-                          <div className="text-xs text-gray-500">Security score</div>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {getTrendIcon(repo.trend)}
-                        <Badge variant="outline" className="border-gray-700 text-gray-400">
-                          {repo.trend}
-                        </Badge>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Trend Chart */}
-          {score.trend && score.trend.length > 0 && (
-            <Card className="bg-gray-900 border-gray-800">
-              <CardHeader>
-                <CardTitle className="text-white">Score Trend</CardTitle>
-                <CardDescription className="text-gray-400">
-                  Historical security score over time
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  {score.trend.map((point, i) => {
-                    const prevScore = i > 0 ? score.trend![i - 1].score : point.score;
-                    const isImproving = point.score >= prevScore;
-                    return (
-                      <div key={i} className="flex items-center justify-between p-3 border border-gray-800 rounded">
-                        <div className="flex items-center gap-3">
-                          <div className={`text-lg font-semibold ${getScoreColor(point.score)}`}>
-                            {point.score}
-                          </div>
-                          <div className="text-sm text-gray-400">
-                            {new Date(point.date).toLocaleDateString('en-US', {
-                              year: 'numeric',
-                              month: 'short',
-                              day: 'numeric',
-                            })}
-                          </div>
-                        </div>
-                        {isImproving ? (
-                          <TrendingUp className="w-4 h-4 text-green-400" />
-                        ) : (
-                          <TrendingDown className="w-4 h-4 text-red-400" />
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        </>
-      ) : (
-        <Card className="bg-gray-900 border-gray-800">
-          <CardContent className="py-12 text-center">
-            <Shield className="h-12 w-12 text-gray-600 mx-auto mb-4" />
-            <p className="text-gray-400">No security score data available</p>
-            <p className="text-sm text-gray-500 mt-2">Scan your repositories to generate security scores</p>
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 }
-

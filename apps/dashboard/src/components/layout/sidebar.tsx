@@ -19,7 +19,7 @@ interface NavItemProps {
 
 function NavItem({ icon: Icon, label, href }: NavItemProps) {
   const pathname = usePathname();
-  const isActive = pathname === href || (href !== '/' && pathname.startsWith(href));
+  const isActive = pathname === href || (href !== '/dashboard' && pathname.startsWith(href));
 
   return (
     <li>
@@ -54,7 +54,7 @@ export function Sidebar() {
       {/* Navigation */}
       <nav className="flex-1 p-4" aria-label="Main navigation">
         <ul className="space-y-1">
-          <NavItem icon={Home} label="Dashboard" href="/" />
+          <NavItem icon={Home} label="Dashboard" href="/dashboard" />
           <NavItem icon={Code} label="Repositories" href="/scan" />
           <NavItem icon={Shield} label="Vulnerabilities" href="/vulnerabilities" />
           <NavItem icon={GitPullRequest} label="Fix PRs" href="/prs" />
